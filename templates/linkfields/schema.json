@@ -1,0 +1,247 @@
+{
+  "template_name": "Linkfields IT Proposal",
+  "style": "formal",
+  "branding": {
+    "primary_color": "#F7941D",
+    "secondary_color": "#0066B3",
+    "accent_color": "#FFB347",
+    "success_color": "#4ECDC4",
+    "warning_color": "#FF6B6B",
+    "error_color": "#E74C3C",
+    "neutral_colors": {
+      "gray100": "#F7FAFC",
+      "gray200": "#EDF2F7",
+      "gray300": "#E2E8F0",
+      "gray700": "#2D3748",
+      "gray900": "#1A202C"
+    },
+    "heading_font": "Arial",
+    "body_font": "Arial",
+    "heading_sizes": {
+      "h1": "32px",
+      "h2": "24px",
+      "h3": "18px"
+    },
+    "heading_weights": {
+      "h1": 700,
+      "h2": 600,
+      "h3": 600
+    },
+    "line_heights": {
+      "heading": 1.3,
+      "body": 1.6
+    },
+    "section_spacing": "2rem",
+    "paragraph_spacing": "1rem",
+    "visual_element_spacing": "1.5rem",
+    "visual_style": "formal",
+    "color_intensity": "balanced"
+  },
+  "assets": {
+    "company_logo": null,
+    "client_logo": null,
+    "cover_image": null
+  },
+  "sections": [
+    {
+      "order": 1,
+      "id": "cover_page",
+      "title": "Cover Page",
+      "type": "special",
+      "required": true,
+      "purpose": "Professional cover page with client name, project title, date, and logos"
+    },
+    {
+      "order": 2,
+      "id": "toc",
+      "title": "Table of Contents",
+      "type": "auto_generated",
+      "required": true,
+      "purpose": "Auto-generated table of contents with page numbers"
+    },
+    {
+      "order": 3,
+      "id": "executive_summary",
+      "number": "1",
+      "title": "Executive Summary",
+      "type": "heading1",
+      "content_type": "mixed",
+      "required": true,
+      "purpose": "High-level overview of the problem, solution, and key technologies"
+    },
+    {
+      "order": 4,
+      "id": "scope",
+      "number": "2",
+      "title": "Scope of the Project",
+      "type": "heading1",
+      "content_type": "bullets",
+      "has_subsections": true,
+      "required": true,
+      "purpose": "Detailed scope including in-scope and out-of-scope items"
+    },
+    {
+      "order": 5,
+      "id": "solution_overview",
+      "number": "3",
+      "title": "Solution Overview",
+      "type": "heading1",
+      "content_type": "mixed",
+      "has_subsections": true,
+      "required": true,
+      "supports_diagram": true,
+      "purpose": "Technical solution components and architecture"
+    },
+    {
+      "order": 6,
+      "id": "delivery_framework",
+      "number": "4",
+      "title": "Delivery Framework",
+      "type": "heading1",
+      "content_type": "bullets",
+      "required": true,
+      "supports_diagram": true,
+      "purpose": "Project delivery methodology and phases"
+    },
+    {
+      "order": 7,
+      "id": "work_breakdown",
+      "number": "5",
+      "title": "Detailed Work Breakdown Structure",
+      "type": "heading1",
+      "content_type": "mixed",
+      "required": true,
+      "supports_diagram": true,
+      "purpose": "Detailed phases, activities, and deliverables"
+    },
+    {
+      "order": 8,
+      "id": "pricing",
+      "number": "6",
+      "title": "Pricing",
+      "type": "heading1",
+      "content_type": "table",
+      "required": true,
+      "supports_chart": true,
+      "purpose": "Project cost breakdown by phase"
+    },
+    {
+      "order": 9,
+      "id": "payment_schedule",
+      "number": "6.2",
+      "title": "Payment Schedule",
+      "type": "heading2",
+      "content_type": "table",
+      "required": true,
+      "supports_chart": true,
+      "purpose": "Milestone-based payment schedule"
+    },
+    {
+      "order": 10,
+      "id": "governance",
+      "number": "7",
+      "title": "Governance and Risk Management",
+      "type": "heading1",
+      "content_type": "mixed",
+      "required": true,
+      "supports_chart": true,
+      "purpose": "Governance structure and risk mitigation strategies"
+    },
+    {
+      "order": 11,
+      "id": "assumptions",
+      "number": "8",
+      "title": "Assumptions",
+      "type": "heading1",
+      "content_type": "bullets",
+      "required": true,
+      "purpose": "Underlying assumptions for the scope of work"
+    },
+    {
+      "order": 12,
+      "id": "customer_obligations",
+      "number": "9",
+      "title": "Customer Obligations",
+      "type": "heading1",
+      "content_type": "bullets",
+      "required": true,
+      "purpose": "Client responsibilities and obligations"
+    },
+    {
+      "order": 13,
+      "id": "acceptance",
+      "number": "10",
+      "title": "Acceptance",
+      "type": "heading1",
+      "content_type": "table",
+      "required": true,
+      "purpose": "Signature blocks for agreement execution"
+    },
+    {
+      "order": 14,
+      "id": "legal",
+      "number": "11",
+      "title": "Legal Notices",
+      "type": "heading1",
+      "content_type": "paragraphs",
+      "has_subsections": true,
+      "required": true,
+      "purpose": "Legal notices, confidentiality, and proprietary information"
+    }
+  ],
+  "table_styles": {
+    "header_bg_color": "#F7941D",
+    "header_text_color": "#FFFFFF",
+    "alternating_rows": true,
+    "row_odd_bg": "#F7FAFC",
+    "row_even_bg": "#FFFFFF",
+    "border_color": "#E2E8F0",
+    "border_width": "1px",
+    "cell_padding": "12px",
+    "font_size": "14px"
+  },
+  "chart_styles": {
+    "colors": ["#F7941D", "#0066B3", "#FFB347", "#4A90D9", "#FF6B6B", "#4ECDC4"],
+    "font_family": "Arial, sans-serif",
+    "grid_color": "#E2E8F0",
+    "background_color": "#FFFFFF"
+  },
+  "diagram_styles": {
+    "theme": "default",
+    "primary_color": "#F7941D",
+    "secondary_color": "#0066B3",
+    "font_family": "Arial, sans-serif"
+  },
+  "callout_styles": {
+    "info": {
+      "border": "#0066B3",
+      "background": "#EBF5FF",
+      "icon": "💡"
+    },
+    "success": {
+      "border": "#4ECDC4",
+      "background": "#E6FAF8",
+      "icon": "✓"
+    },
+    "warning": {
+      "border": "#FF6B6B",
+      "background": "#FFF0F0",
+      "icon": "⚠"
+    },
+    "tip": {
+      "border": "#FFB347",
+      "background": "#FFF8ED",
+      "icon": "→"
+    },
+    "note": {
+      "border": "#2D3748",
+      "background": "#F7FAFC",
+      "icon": "ℹ"
+    }
+  },
+  "signature_block": {
+    "required": true,
+    "parties": 2,
+    "copies_per_party": 2
+  }
+}

@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= proposal.projectTitle || 'Proposal' %></title>
+
+  <style>
+    /* A4 Page Setup */
+    @page {
+      size: A4;
+      margin: <%= options.margins.top %>mm <%= options.margins.right %>mm <%= options.margins.bottom %>mm <%= options.margins.left %>mm;
+    }
+
+    /* Reset and Base Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: <%= branding.fontFamily || 'Arial, sans-serif' %>;
+      font-size: 11pt;
+      line-height: 1.6;
+      color: #333;
+      background: #ffffff;
+    }
+
+    /* Typography */
+    h1 {
+      font-size: 28pt;
+      font-weight: bold;
+      color: <%= branding.primary_color || '#3b82f6' %>;
+      margin-bottom: 16pt;
+      page-break-after: avoid;
+    }
+
+    h2 {
+      font-size: 20pt;
+      font-weight: bold;
+      color: <%= branding.primary_color || '#3b82f6' %>;
+      margin-top: 24pt;
+      margin-bottom: 12pt;
+      page-break-after: avoid;
+      border-bottom: 2px solid <%= branding.primary_color || '#3b82f6' %>;
+      padding-bottom: 6pt;
+    }
+
+    h3 {
+      font-size: 16pt;
+      font-weight: bold;
+      color: <%= branding.secondary_color || '#64748b' %>;
+      margin-top: 18pt;
+      margin-bottom: 10pt;
+      page-break-after: avoid;
+    }
+
+    p {
+      margin-bottom: 12pt;
+      text-align: justify;
+    }
+
+    /* Lists */
+    ul, ol {
+      margin-left: 20pt;
+      margin-bottom: 12pt;
+    }
+
+    li {
+      margin-bottom: 6pt;
+    }
+
+    /* Cover Page */
+    .cover-page {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      text-align: center;
+      page-break-after: always;
+      background: linear-gradient(135deg, <%= branding.primary_color || '#3b82f6' %>15 0%, <%= branding.secondary_color || '#64748b' %>15 100%);
+    }
+
+    .cover-logo {
+      max-width: 400px;
+      max-height: 200px;
+      margin-bottom: 40pt;
+    }
+
+    .cover-title {
+      font-size: 36pt;
+      font-weight: bold;
+      color: <%= branding.primary_color || '#3b82f6' %>;
+      margin-bottom: 24pt;
+    }
+
+    .cover-subtitle {
+      font-size: 18pt;
+      color: #64748b;
+      margin-bottom: 12pt;
+    }
+
+    .cover-client {
+      font-size: 20pt;
+      font-weight: bold;
+      margin-top: 40pt;
+      margin-bottom: 12pt;
+    }
+
+    .cover-date {
+      font-size: 14pt;
+      color: #64748b;
+      margin-top: 40pt;
+    }
+
+    /* Table of Contents */
+    .toc-page {
+      page-break-after: always;
+    }
+
+    .toc-title {
+      font-size: 24pt;
+      margin-bottom: 24pt;
+      text-align: center;
+    }
+
+    .toc-list {
+      list-style: none;
+      margin-left: 0;
+    }
+
+    .toc-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12pt;
+      padding-bottom: 6pt;
+      border-bottom: 1px dotted #ddd;
+    }
+
+    .toc-item-title {
+      flex: 1;
+    }
+
+    .toc-item-page {
+      margin-left: 12pt;
+      font-weight: bold;
+    }
+
+    /* Content Sections */
+    .section {
+      page-break-before: always;
+      margin-bottom: 24pt;
+    }
+
+    .section:first-of-type {
+      page-break-before: auto;
+    }
+
+    .section-title {
+      font-size: 20pt;
+      font-weight: bold;
+      color: <%= branding.primary_color || '#3b82f6' %>;
+      margin-bottom: 16pt;
+      border-bottom: 2px solid <%= branding.primary_color || '#3b82f6' %>;
+      padding-bottom: 8pt;
+    }
+
+    .section-content {
+      margin-bottom: 16pt;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16pt;
+      page-break-inside: avoid;
+    }
+
+    th {
+      background-color: <%= branding.primary_color || '#3b82f6' %>;
+      color: white;
+      padding: 10pt;
+      text-align: left;
+      font-weight: bold;
+    }
+
+    td {
+      padding: 10pt;
+      border: 1px solid #e5e7eb;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9fafb;
+    }
+
+    /* Callout Boxes */
+    .callout {
+      padding: 12pt;
+      margin-bottom: 16pt;
+      border-left: 4px solid;
+      page-break-inside: avoid;
+    }
+
+    .callout-info {
+      background-color: #eff6ff;
+      border-color: #3b82f6;
+    }
+
+    .callout-warning {
+      background-color: #fef3c7;
+      border-color: #f59e0b;
+    }
+
+    .callout-success {
+      background-color: #d1fae5;
+      border-color: #10b981;
+    }
+
+    .callout-tip {
+      background-color: #f3e8ff;
+      border-color: #a855f7;
+    }
+
+    .callout-title {
+      font-weight: bold;
+      margin-bottom: 6pt;
+    }
+
+    /* Charts and Diagrams */
+    .visualization {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      margin: 16pt 0;
+      page-break-inside: avoid;
+    }
+
+    .visualization-caption {
+      text-align: center;
+      font-style: italic;
+      color: #64748b;
+      margin-top: 8pt;
+      margin-bottom: 16pt;
+    }
+
+    /* Timeline */
+    .timeline {
+      margin: 24pt 0;
+      page-break-inside: avoid;
+    }
+
+    .timeline-item {
+      display: flex;
+      margin-bottom: 16pt;
+      position: relative;
+    }
+
+    .timeline-marker {
+      width: 40pt;
+      height: 40pt;
+      border-radius: 50%;
+      background-color: <%= branding.primary_color || '#3b82f6' %>;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      flex-shrink: 0;
+      margin-right: 16pt;
+    }
+
+    .timeline-content {
+      flex: 1;
+    }
+
+    .timeline-title {
+      font-weight: bold;
+      margin-bottom: 4pt;
+    }
+
+    .timeline-date {
+      color: #64748b;
+      font-size: 10pt;
+      margin-bottom: 4pt;
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12pt;
+      margin: 16pt 0;
+      page-break-inside: avoid;
+    }
+
+    .kpi-card {
+      padding: 12pt;
+      border: 1px solid #e5e7eb;
+      border-radius: 8pt;
+      text-align: center;
+    }
+
+    .kpi-value {
+      font-size: 24pt;
+      font-weight: bold;
+      color: <%= branding.primary_color || '#3b82f6' %>;
+      margin-bottom: 4pt;
+    }
+
+    .kpi-label {
+      font-size: 10pt;
+      color: #64748b;
+    }
+
+    /* Comparison Matrix */
+    .comparison-matrix {
+      margin: 16pt 0;
+      page-break-inside: avoid;
+    }
+
+    .comparison-matrix table th:first-child {
+      text-align: left;
+      background-color: #f9fafb;
+      color: #333;
+    }
+
+    .comparison-matrix .checkmark {
+      color: #10b981;
+      font-weight: bold;
+      font-size: 14pt;
+    }
+
+    .comparison-matrix .cross {
+      color: #ef4444;
+      font-weight: bold;
+      font-size: 14pt;
+    }
+
+    /* Page Breaks */
+    .page-break {
+      page-break-after: always;
+    }
+
+    /* Footer */
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40pt;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 <%= options.margins.left %>mm;
+      border-top: 1px solid #e5e7eb;
+      font-size: 9pt;
+      color: #64748b;
+    }
+
+    /* Print Optimizations */
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .page-break {
+        page-break-after: always;
+      }
+
+      .no-break {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cover Page -->
+  <div class="cover-page">
+    <% if (branding.logo) { %>
+      <img src="<%= branding.logo %>" alt="Logo" class="cover-logo" />
+    <% } %>
+
+    <div class="cover-title">
+      <%= proposal.projectTitle || 'Proposal' %>
+    </div>
+
+    <div class="cover-subtitle">
+      Prepared for
+    </div>
+
+    <div class="cover-client">
+      <%= proposal.clientCompany %>
+    </div>
+
+    <% if (proposal.clientName) { %>
+      <div class="cover-subtitle">
+        Attn: <%= proposal.clientName %>
+      </div>
+    <% } %>
+
+    <div class="cover-date">
+      <%= generatedDate %>
+    </div>
+  </div>
+
+  <!-- Table of Contents -->
+  <% if (options.includeTOC) { %>
+    <div class="toc-page">
+      <h2 class="toc-title">Table of Contents</h2>
+      <ul class="toc-list">
+        <% sections.forEach((section, index) => { %>
+          <li class="toc-item">
+            <span class="toc-item-title"><%= index + 1 %>. <%= section.title %></span>
+            <span class="toc-item-page"><%= index + 2 %></span>
+          </li>
+        <% }); %>
+      </ul>
+    </div>
+  <% } %>
+
+  <!-- Main Content -->
+  <% sections.forEach((section, sectionIndex) => { %>
+    <div class="section">
+      <h2 class="section-title"><%= section.title %></h2>
+
+      <div class="section-content">
+        <%- section.content %>
+      </div>
+
+      <!-- Visualizations -->
+      <% if (section.visualizations && section.visualizations.length > 0) { %>
+        <% section.visualizations.forEach(viz => { %>
+
+          <!-- Chart -->
+          <% if (viz.type === 'chart') { %>
+            <div class="visualization">
+              <canvas id="chart-<%= sectionIndex %>-<%= viz.id %>" width="800" height="400"></canvas>
+            </div>
+            <% if (viz.caption) { %>
+              <p class="visualization-caption"><%= viz.caption %></p>
+            <% } %>
+          <% } %>
+
+          <!-- Diagram -->
+          <% if (viz.type === 'mermaid') { %>
+            <div class="visualization">
+              <img src="<%= viz.imageData %>" alt="<%= viz.caption || 'Diagram' %>" style="max-width: 100%; height: auto;" />
+            </div>
+            <% if (viz.caption) { %>
+              <p class="visualization-caption"><%= viz.caption %></p>
+            <% } %>
+          <% } %>
+
+          <!-- Table -->
+          <% if (viz.type === 'table' && viz.data) { %>
+            <table>
+              <thead>
+                <tr>
+                  <% viz.data.headers.forEach(header => { %>
+                    <th><%= header %></th>
+                  <% }); %>
+                </tr>
+              </thead>
+              <tbody>
+                <% viz.data.rows.forEach(row => { %>
+                  <tr>
+                    <% row.forEach(cell => { %>
+                      <td><%= cell %></td>
+                    <% }); %>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+            <% if (viz.caption) { %>
+              <p class="visualization-caption"><%= viz.caption %></p>
+            <% } %>
+          <% } %>
+
+          <!-- Callout -->
+          <% if (viz.type === 'callout' && viz.data) { %>
+            <div class="callout callout-<%= viz.data.type || 'info' %>">
+              <% if (viz.data.title) { %>
+                <div class="callout-title"><%= viz.data.title %></div>
+              <% } %>
+              <div><%= viz.data.content %></div>
+            </div>
+          <% } %>
+
+          <!-- Timeline -->
+          <% if (viz.type === 'timeline' && viz.data) { %>
+            <div class="timeline">
+              <% viz.data.items.forEach((item, idx) => { %>
+                <div class="timeline-item">
+                  <div class="timeline-marker"><%= idx + 1 %></div>
+                  <div class="timeline-content">
+                    <div class="timeline-title"><%= item.title %></div>
+                    <div class="timeline-date"><%= item.date %></div>
+                    <% if (item.description) { %>
+                      <div><%= item.description %></div>
+                    <% } %>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
+          <% } %>
+
+          <!-- KPI Cards -->
+          <% if (viz.type === 'kpi' && viz.data) { %>
+            <div class="kpi-grid">
+              <% viz.data.items.forEach(kpi => { %>
+                <div class="kpi-card">
+                  <div class="kpi-value"><%= kpi.value %></div>
+                  <div class="kpi-label"><%= kpi.label %></div>
+                </div>
+              <% }); %>
+            </div>
+          <% } %>
+
+        <% }); %>
+      <% } %>
+
+    </div>
+  <% }); %>
+
+  <!-- Signature Page -->
+  <div class="section page-break">
+    <h2 class="section-title">Agreement</h2>
+
+    <p style="margin-bottom: 40pt;">
+      By signing below, both parties agree to the terms and conditions outlined in this proposal.
+    </p>
+
+    <table style="border: none; margin-top: 60pt;">
+      <tr>
+        <td style="border: none; width: 50%; padding: 20pt;">
+          <strong><%= proposal.extractedData?.companyName || 'Company Name' %></strong>
+          <div style="margin-top: 40pt; border-bottom: 1px solid #333; width: 80%;"></div>
+          <div style="margin-top: 8pt;">Signature</div>
+          <div style="margin-top: 40pt; border-bottom: 1px solid #333; width: 80%;"></div>
+          <div style="margin-top: 8pt;">Date</div>
+        </td>
+        <td style="border: none; width: 50%; padding: 20pt;">
+          <strong><%= proposal.clientCompany || 'Client Company' %></strong>
+          <div style="margin-top: 40pt; border-bottom: 1px solid #333; width: 80%;"></div>
+          <div style="margin-top: 8pt;">Signature</div>
+          <div style="margin-top: 40pt; border-bottom: 1px solid #333; width: 80%;"></div>
+          <div style="margin-top: 8pt;">Date</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Chart.js for rendering charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    // Chart rendering logic would go here
+    // This would be populated with actual chart data from the sections
+  </script>
+
+</body>
+</html>

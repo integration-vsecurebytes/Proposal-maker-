@@ -1,0 +1,898 @@
+/* Professional Proposal Preview Styles */
+
+.proposal-preview {
+  font-family: var(--font-family, 'Inter, system-ui, sans-serif');
+  background: linear-gradient(to bottom, #ffffff, #f8fafc);
+}
+
+/* A4 Page Layout - Zoom controlled by parent */
+.proposal-preview.a4-layout {
+  width: 210mm; /* Fixed A4 width */
+  background: white;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  margin: 0 auto;
+  /* Allow content to flow naturally */
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header positioning in A4 layout */
+.proposal-preview.a4-layout > .sticky {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Content area in A4 layout */
+.proposal-preview.a4-layout > .p-12 {
+  flex: 1;
+  padding: 15mm 25mm !important; /* A4 margins: reduced top/bottom for header/footer */
+  max-width: 210mm;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+/* Footer positioning in A4 layout */
+.proposal-preview.a4-layout > .border-t-4 {
+  flex-shrink: 0;
+}
+
+.proposal-preview.a4-layout .section {
+  max-width: 100%;
+  padding: 0 0 10mm 0; /* Remove horizontal padding, keep bottom spacing */
+  page-break-after: auto;
+  page-break-inside: auto; /* Allow sections to break across pages if needed */
+  background: white;
+  margin: 0;
+}
+
+.proposal-preview.a4-layout .space-y-12 {
+  gap: 10mm;
+}
+
+/* Page break marker styling */
+.proposal-preview .page-break {
+  page-break-after: always;
+  break-after: page;
+  margin: 2rem 0;
+  border-bottom: 2px dashed #e5e7eb;
+  padding-bottom: 1rem;
+  clear: both;
+}
+
+/* On screen: show visual page separator */
+@media screen {
+  .proposal-preview.a4-layout .page-break {
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .proposal-preview.a4-layout .page-break::before {
+    content: '--- Page Break ---';
+    font-size: 0.75rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+}
+
+/* Page break control */
+.proposal-preview.a4-layout h1,
+.proposal-preview.a4-layout h2,
+.proposal-preview.a4-layout h3,
+.proposal-preview.a4-layout h4,
+.proposal-preview.a4-layout h5,
+.proposal-preview.a4-layout h6 {
+  page-break-after: avoid;
+  page-break-inside: avoid;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  text-align: left !important;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Hide decorative elements in A4 to prevent misalignment */
+.proposal-preview.a4-layout h2::before,
+.proposal-preview.a4-layout h3::before,
+.proposal-preview.a4-layout h4::before,
+.proposal-preview.a4-layout h5::before,
+.proposal-preview.a4-layout h6::before {
+  display: none !important;
+}
+
+.proposal-preview.a4-layout p {
+  page-break-inside: avoid;
+  orphans: 3;
+  widows: 3;
+}
+
+.proposal-preview.a4-layout table,
+.proposal-preview.a4-layout .mermaid,
+.proposal-preview.a4-layout canvas,
+.proposal-preview.a4-layout .border-2 {
+  page-break-inside: avoid;
+  page-break-before: auto;
+  page-break-after: auto;
+}
+
+/* Allow sections to flow naturally - AI controls page breaks */
+.proposal-preview.a4-layout .section + .section {
+  page-break-before: auto; /* Don't force breaks, let AI page breaks control it */
+}
+
+/* Cover page and special slides take full page */
+.proposal-preview.a4-layout .section[data-type="cover_page"],
+.proposal-preview.a4-layout .section[data-type="thank_you"],
+.proposal-preview.a4-layout .section[data-type="back_cover"] {
+  width: 100%; /* Full width within container */
+  min-height: 240mm; /* Adjusted for header/footer space */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  page-break-after: always;
+  box-sizing: border-box;
+  position: relative;
+  padding: 20mm 0; /* Vertical padding for breathing room */
+  margin: 0;
+}
+
+/* A4 Print Styles */
+@media print {
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .proposal-preview.a4-layout {
+    max-width: 100%;
+    box-shadow: none;
+    margin: 0;
+    min-height: auto;
+    display: block; /* Change to block for print */
+  }
+
+  /* Header: Show on every page */
+  .proposal-preview.a4-layout > .sticky {
+    position: running(header);
+    page-break-inside: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Content: Allow natural flow with page breaks */
+  .proposal-preview.a4-layout > .p-12 {
+    padding: 0 20mm !important;
+    page-break-inside: auto;
+  }
+
+  /* Footer: Show on every page */
+  .proposal-preview.a4-layout > .border-t-4 {
+    position: running(footer);
+    page-break-inside: avoid;
+    page-break-before: avoid;
+  }
+
+  /* Sections can break naturally */
+  .proposal-preview.a4-layout .section {
+    min-height: auto;
+    page-break-after: auto;
+    page-break-inside: auto; /* Allow breaking if content is long */
+    margin: 0 0 8mm 0;
+    padding: 0;
+  }
+
+  /* Page break marker forces new page */
+  .proposal-preview .page-break {
+    page-break-after: always;
+    break-after: page;
+    margin: 0;
+    padding: 0;
+    border: none;
+    height: 0;
+    visibility: hidden;
+  }
+
+  .proposal-preview .page-break::before {
+    display: none;
+  }
+
+  /* Prevent orphans and widows */
+  .proposal-preview p,
+  .proposal-preview li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Keep headings with following content */
+  .proposal-preview h1,
+  .proposal-preview h2,
+  .proposal-preview h3,
+  .proposal-preview h4,
+  .proposal-preview h5,
+  .proposal-preview h6 {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Keep tables, images, and diagrams together */
+  .proposal-preview table,
+  .proposal-preview figure,
+  .proposal-preview .mermaid,
+  .proposal-preview canvas,
+  .proposal-preview .border-2 {
+    page-break-inside: avoid;
+    page-break-before: auto;
+    page-break-after: auto;
+  }
+
+  /* Hide pagination controls */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 20mm 20mm; /* Equal margins all around */
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Ensure images and diagrams fit */
+  img, canvas, svg {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid;
+  }
+}
+
+/* Enhanced Header with Shadow */
+.proposal-preview .sticky {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+/* Section Styling */
+.proposal-preview .section {
+  background: white;
+  padding: 3rem;
+  margin-bottom: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s ease;
+}
+
+.proposal-preview .section:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Heading Styling with Gradient Underline */
+.proposal-preview h1 {
+  font-family: var(--heading-font, 'Arial, sans-serif');
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  position: relative;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+  padding-left: 0;
+  margin-left: 0;
+  text-align: left;
+}
+
+.proposal-preview h1::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+  border-radius: 2px;
+}
+
+.proposal-preview h2 {
+  font-family: var(--heading-font, 'Arial, sans-serif');
+  color: var(--primary-color);
+  position: relative;
+  padding-left: 20px;
+  margin-left: 0;
+  text-align: left;
+}
+
+.proposal-preview h2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 60%;
+  background: var(--primary-color);
+  border-radius: 3px;
+}
+
+.proposal-preview h3 {
+  font-family: var(--heading-font, 'Arial, sans-serif');
+  color: var(--secondary-color);
+  padding-left: 0;
+  margin-left: 0;
+  text-align: left;
+  position: relative;
+}
+
+.proposal-preview h3::before {
+  display: none;
+}
+
+.proposal-preview h4 {
+  font-family: var(--heading-font, 'Arial, sans-serif');
+  color: var(--secondary-color);
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+  text-align: left;
+  position: relative;
+}
+
+.proposal-preview h4::before {
+  display: none !important;
+}
+
+.proposal-preview h5,
+.proposal-preview h6 {
+  font-family: var(--heading-font, 'Arial, sans-serif');
+  color: var(--secondary-color);
+  padding-left: 0;
+  margin-left: 0;
+  text-align: left;
+  position: relative;
+}
+
+.proposal-preview h5::before,
+.proposal-preview h6::before {
+  display: none;
+}
+
+/* Paragraph Styling */
+.proposal-preview p {
+  line-height: 1.8;
+  margin-bottom: 1.25rem;
+  color: #374151;
+}
+
+/* List Styling */
+.proposal-preview ul, .proposal-preview ol {
+  margin: 1.5rem 0;
+  padding-left: 2rem;
+}
+
+.proposal-preview li {
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+  color: #4b5563;
+  position: relative;
+}
+
+.proposal-preview ul li::marker {
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+/* Strong Text Highlighting */
+.proposal-preview strong {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* Visual Element Containers */
+.proposal-preview .border {
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.proposal-preview .border:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Table Enhancements (for TableRenderer) */
+.proposal-preview table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 100%;
+}
+
+.proposal-preview table thead tr {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+}
+
+.proposal-preview table thead th {
+  color: white;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.875rem;
+  padding: 0.75rem 0.5rem;
+  word-wrap: break-word;
+}
+
+.proposal-preview table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.proposal-preview table tbody tr:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.proposal-preview table tbody td {
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  word-wrap: break-word;
+  max-width: 200px;
+}
+
+/* A4 specific table styling */
+.proposal-preview.a4-layout table {
+  font-size: 0.8rem;
+  page-break-inside: auto;
+}
+
+.proposal-preview.a4-layout table thead {
+  display: table-header-group;
+}
+
+.proposal-preview.a4-layout table tbody {
+  display: table-row-group;
+}
+
+.proposal-preview.a4-layout table tr {
+  page-break-inside: avoid;
+  page-break-after: auto;
+}
+
+.proposal-preview.a4-layout table thead th {
+  padding: 0.6rem 0.4rem;
+  font-size: 0.75rem;
+}
+
+.proposal-preview.a4-layout table tbody td {
+  padding: 0.6rem 0.4rem;
+  font-size: 0.75rem;
+}
+
+/* Callout Box Enhancements */
+.proposal-preview [class*="border-l-"] {
+  position: relative;
+  padding-left: 1.5rem;
+  border-left-width: 4px;
+  border-radius: 4px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.95));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease;
+}
+
+.proposal-preview [class*="border-l-"]:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Card Layouts & Grid Systems */
+.proposal-preview .kpi-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.proposal-preview .kpi-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.proposal-preview .kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  border-color: var(--primary-color);
+}
+
+.proposal-preview .kpi-card .icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.proposal-preview .kpi-card .value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--primary-color);
+  margin: 0.5rem 0;
+}
+
+.proposal-preview .kpi-card .label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Two-Column Layout */
+.proposal-preview .two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin: 2rem 0;
+}
+
+@media (max-width: 768px) {
+  .proposal-preview .two-column {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Feature Cards / Highlight Cards */
+.proposal-preview .feature-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.proposal-preview .feature-card {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.proposal-preview .feature-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.proposal-preview .feature-card h4 {
+  color: var(--primary-color);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.proposal-preview .feature-card ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+/* Dashboard Layout - 3 Column Grid */
+.proposal-preview .dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+@media (max-width: 1024px) {
+  .proposal-preview .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .proposal-preview .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Icon-Based Highlights */
+.proposal-preview .icon-highlight {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  border-left: 3px solid var(--primary-color);
+  background: #f9fafb;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.proposal-preview .icon-highlight .icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.proposal-preview .icon-highlight .content {
+  flex: 1;
+}
+
+/* Comparison Layout - Side by Side */
+.proposal-preview .comparison-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin: 2rem 0;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.proposal-preview .comparison-layout .current-state {
+  background: #fef3c7;
+  padding: 1.5rem;
+}
+
+.proposal-preview .comparison-layout .future-state {
+  background: #d1fae5;
+  padding: 1.5rem;
+}
+
+.proposal-preview .comparison-layout h4 {
+  margin-top: 0;
+}
+
+/* Milestone Cards */
+.proposal-preview .milestone-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.proposal-preview .milestone-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-left: 4px solid var(--primary-color);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.proposal-preview .milestone-card .number {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--primary-color);
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #eff6ff;
+}
+
+/* Horizontal Rule Styling */
+.proposal-preview hr {
+  border: none;
+  border-top: 2px solid #e5e7eb;
+  margin: 2rem 0;
+}
+
+/* Cover Page Enhancements */
+.proposal-preview .bg-gradient-to-br {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 50%, #fef3c7 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.proposal-preview .bg-gradient-to-br::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+  animation: pulse 8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.3;
+  }
+}
+
+/* Chart/Diagram Containers - Enhanced */
+.proposal-preview .bg-gray-50 {
+  background: linear-gradient(to bottom right, #f9fafb, #f3f4f6);
+  border: 1px solid #e5e7eb;
+}
+
+/* Mermaid Diagram Enhancements */
+.proposal-preview .mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  max-height: 600px;
+  overflow: auto;
+}
+
+.proposal-preview .mermaid svg {
+  max-width: 100%;
+  max-height: 600px;
+  height: auto;
+  width: auto;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+}
+
+.proposal-preview .mermaid-container {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 650px;
+}
+
+/* Force all Mermaid text to be visible - CRITICAL */
+.proposal-preview .mermaid svg text,
+.proposal-preview .mermaid svg tspan,
+.proposal-preview .mermaid svg .nodeLabel,
+.proposal-preview .mermaid svg .edgeLabel,
+.proposal-preview .mermaid svg .label,
+.proposal-preview .mermaid-container svg text,
+.proposal-preview .mermaid-container svg tspan {
+  fill: #000000 !important;
+  color: #000000 !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+}
+
+/* Ensure label backgrounds are visible */
+.proposal-preview .mermaid svg .label-container,
+.proposal-preview .mermaid svg .labelBox,
+.proposal-preview .mermaid-container svg .label-container {
+  fill: #ffffff !important;
+  stroke: #d1d5db !important;
+}
+
+/* Enable text wrapping in foreignObject elements */
+.proposal-preview .mermaid svg foreignObject,
+.proposal-preview .mermaid-container svg foreignObject {
+  overflow: visible !important;
+}
+
+.proposal-preview .mermaid svg foreignObject div,
+.proposal-preview .mermaid-container svg foreignObject div {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+}
+
+/* Make nodes more compact */
+.proposal-preview .mermaid svg .node rect,
+.proposal-preview .mermaid svg .node circle,
+.proposal-preview .mermaid svg .node polygon {
+  stroke-width: 2px !important;
+}
+
+/* Chart Canvas Quality */
+.proposal-preview canvas {
+  max-width: 100%;
+  height: auto !important;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Visual Element Wrapper Enhancements */
+.proposal-preview [class*="border-2"][class*="rounded-2xl"] {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.proposal-preview [class*="border-2"][class*="rounded-2xl"]:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Captions */
+.proposal-preview .text-sm.italic {
+  color: #6b7280;
+  font-style: italic;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 0.5rem;
+}
+
+/* Footer Enhancements */
+.proposal-preview .bg-gray-50:last-child {
+  background: linear-gradient(to right, #f9fafb, #f3f4f6);
+  border-top: 3px solid var(--primary-color);
+}
+
+/* Page Number Styling */
+.proposal-preview .text-xs.text-gray-500 {
+  font-weight: 500;
+}
+
+/* Section Separator */
+.proposal-preview .section + .section {
+  position: relative;
+}
+
+.proposal-preview .section + .section::before {
+  content: '';
+  position: absolute;
+  top: -1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+  border-radius: 2px;
+}
+
+/* Print-Friendly Styles */
+@media print {
+  .proposal-preview .section {
+    box-shadow: none;
+    page-break-inside: avoid;
+  }
+
+  .proposal-preview h1,
+  .proposal-preview h2,
+  .proposal-preview h3 {
+    page-break-after: avoid;
+  }
+
+  .proposal-preview .border:hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .proposal-preview .section {
+    padding: 1.5rem;
+  }
+
+  .proposal-preview h1 {
+    font-size: 2rem;
+  }
+
+  .proposal-preview h2 {
+    font-size: 1.5rem;
+  }
+
+  .proposal-preview table {
+    font-size: 0.875rem;
+  }
+}
+
+/* Loading States */
+.proposal-preview .animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Accessibility */
+.proposal-preview:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.proposal-preview a:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
