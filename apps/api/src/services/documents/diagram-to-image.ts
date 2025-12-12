@@ -89,7 +89,10 @@ export class DiagramImageService {
       // Normalize branding colors
       const colors = normalizeBranding(branding);
 
-      // Create HTML with Mermaid configuration
+      // Determine background color (white for documents, transparent for web)
+      const bgColor = backgroundColor === 'transparent' ? 'transparent' : backgroundColor;
+
+      // Create HTML with Mermaid configuration matching preview's MermaidRenderer
       const html = `
 <!DOCTYPE html>
 <html>
@@ -100,7 +103,7 @@ export class DiagramImageService {
     body {
       margin: 0;
       padding: 20px;
-      background-color: transparent;
+      background-color: ${bgColor};
       display: flex;
       align-items: center;
       justify-content: center;
@@ -109,6 +112,18 @@ export class DiagramImageService {
     .mermaid {
       max-width: 100%;
       font-family: ${colors.fontFamily};
+    }
+    /* Force text visibility matching preview */
+    .mermaid text, .mermaid tspan {
+      fill: #000000 !important;
+      font-weight: 600 !important;
+      font-size: 16px !important;
+    }
+    .mermaid foreignObject div, .mermaid foreignObject span, .mermaid foreignObject p {
+      color: #000000 !important;
+      font-weight: 600 !important;
+      font-size: 16px !important;
+      text-align: center !important;
     }
   </style>
 </head>
@@ -119,34 +134,65 @@ ${mermaidCode}
   <script>
     mermaid.initialize({
       startOnLoad: true,
-      theme: 'base',
+      theme: 'default',
+      securityLevel: 'loose',
       themeVariables: {
-        primaryColor: '${colors.primaryColor}',
-        primaryTextColor: '#000000',
-        primaryBorderColor: '${colors.primaryColor}',
-        secondaryColor: '${colors.secondaryColor}',
-        secondaryTextColor: '#000000',
-        tertiaryColor: '${colors.accentColor}',
-        tertiaryTextColor: '#000000',
-        lineColor: '${colors.borderColor}',
-        textColor: '#000000',
-        background: 'transparent',
-        mainBkg: '${colors.surfaceColor}',
+        // Match preview's MermaidRenderer theme variables exactly
         fontSize: '18px',
-        fontFamily: '${colors.fontFamily}',
-        nodeBorder: '${colors.borderColor}',
-        nodeTextColor: '#000000',
-        edgeLabelBackground: 'transparent',
-        clusterBkg: '${colors.surfaceColor}',
-        clusterBorder: '${colors.borderColor}',
+        primaryTextColor: '#000000',
+        secondaryTextColor: '#000000',
+        tertiaryTextColor: '#000000',
+        primaryColor: '${colors.primaryColor}',
+        primaryBorderColor: '${colors.primaryColor}',
+        lineColor: '#4b5563',
+        secondaryColor: '#f3f4f6',
+        tertiaryColor: '#e5e7eb',
+        textColor: '#000000',
         labelTextColor: '#000000',
-        labelColor: '#000000',
-        signalTextColor: '#000000'
+        nodeTextColor: '#000000',
+        edgeLabelBackground: '#ffffff',
+        labelBackground: '#ffffff',
+        clusterBkg: '#f9fafb',
+        clusterBorder: '#d1d5db',
+        defaultLinkColor: '#4b5563',
+        titleColor: '#000000',
+        actorTextColor: '#000000',
+        signalTextColor: '#000000',
+        labelBoxBkgColor: '#ffffff',
+        labelBoxBorderColor: '#d1d5db',
+        loopTextColor: '#000000',
+        noteBkgColor: '#fef3c7',
+        noteTextColor: '#000000',
+        activationBkgColor: '#e0e7ff',
+        activationBorderColor: '#6366f1',
+        background: '${bgColor}',
+        mainBkg: '${colors.surfaceColor}',
+        fontFamily: '${colors.fontFamily}',
+        nodeBorder: '${colors.borderColor}'
       },
       flowchart: {
+        fontSize: 16,
+        nodeSpacing: 30,
+        rankSpacing: 40,
+        padding: 20,
         useMaxWidth: true,
         htmlLabels: true,
-        curve: 'basis'
+        curve: 'basis',
+        wrappingWidth: 150
+      },
+      sequence: {
+        fontSize: 16,
+        messageMargin: 25,
+        boxMargin: 8,
+        useMaxWidth: true
+      },
+      gantt: {
+        fontSize: 14,
+        sectionFontSize: 16,
+        numberSectionStyles: 4,
+        useMaxWidth: true,
+        barHeight: 20,
+        barGap: 4
       }
     });
   </script>

@@ -858,6 +858,7 @@ export class DocxGenerator {
 
   /**
    * Parse Markdown table and convert to Word Table with dynamic branding colors
+   * Matches the preview styling with proper colors
    */
   private parseMarkdownTable(lines: string[], startIndex: number, branding: any = {}): { table: Table | null; nextIndex: number } {
     const tableLine = lines[startIndex].trim();
@@ -902,15 +903,30 @@ export class DocxGenerator {
       currentIndex++;
     }
 
-    // Normalize branding for consistent colors
+    // Normalize branding for consistent colors - matching preview defaults
     const normalizedBranding = normalizeBranding(branding);
-    const primaryColor = this.hexToRgb(normalizedBranding.primaryColor);
-    const headerTextColor = this.hexToRgb(normalizedBranding.headerTextColor);
-    const borderColor = normalizedBranding.borderColor.replace('#', '');
-    const rowOddBg = this.hexToRgb(normalizedBranding.rowOddBg);
-    const rowEvenBg = this.hexToRgb(normalizedBranding.rowEvenBg);
+    const primaryColorHex = normalizedBranding.primaryColor || '#3b82f6';
+    const headerTextColorHex = normalizedBranding.headerTextColor || '#ffffff';
+    const borderColorHex = normalizedBranding.borderColor || '#e5e7eb';
+    const rowOddBgHex = normalizedBranding.rowOddBg || '#ffffff';
+    const rowEvenBgHex = normalizedBranding.rowEvenBg || '#f9fafb';
 
-    // Create Word table with dynamic colors
+    // Parse to RGB
+    const primaryColor = this.hexToRgb(primaryColorHex);
+    const headerTextColor = this.hexToRgb(headerTextColorHex);
+    const rowOddBg = this.hexToRgb(rowOddBgHex);
+    const rowEvenBg = this.hexToRgb(rowEvenBgHex);
+
+    // Helper to convert RGB to hex WITHOUT # prefix (DOCX requirement)
+    const rgbToHexNoHash = (rgb: { r: number; g: number; b: number } | null): string => {
+      if (!rgb) return 'FFFFFF';
+      return this.rgbToHex(rgb.r, rgb.g, rgb.b).replace('#', '');
+    };
+
+    // Border color without # prefix
+    const borderColorNoHash = borderColorHex.replace('#', '');
+
+    // Create Word table with dynamic colors matching preview
     const headerRow = new TableRow({
       children: headerCells.map(cellText =>
         new TableCell({
@@ -920,7 +936,8 @@ export class DocxGenerator {
                 new TextRun({
                   text: cellText,
                   bold: true,
-                  color: headerTextColor ? this.rgbToHex(headerTextColor.r, headerTextColor.g, headerTextColor.b).replace('#', '') : 'FFFFFF',
+                  color: rgbToHexNoHash(headerTextColor),
+                  size: 22, // 11pt
                 }),
               ],
               alignment: AlignmentType.CENTER,
@@ -928,32 +945,48 @@ export class DocxGenerator {
           ],
           shading: primaryColor ? {
             type: ShadingType.CLEAR,
-            color: this.rgbToHex(primaryColor.r, primaryColor.g, primaryColor.b).replace('#', ''),
-            fill: this.rgbToHex(primaryColor.r, primaryColor.g, primaryColor.b).replace('#', ''),
+            color: rgbToHexNoHash(primaryColor),
+            fill: rgbToHexNoHash(primaryColor),
           } : undefined,
           verticalAlign: VerticalAlign.CENTER,
+          margins: {
+            top: convertInchesToTwip(0.08),
+            bottom: convertInchesToTwip(0.08),
+            left: convertInchesToTwip(0.1),
+            right: convertInchesToTwip(0.1),
+          },
         })
       ),
       tableHeader: true,
     });
 
     const tableDataRows = dataRows.map((row, rowIndex) => {
-      const isEven = rowIndex % 2 === 0;
-      const bgColor = isEven ? rowOddBg : rowEvenBg;
+      const isOdd = rowIndex % 2 === 0; // 0, 2, 4... are odd rows
+      const bgColor = isOdd ? rowOddBg : rowEvenBg;
 
       return new TableRow({
         children: row.map(cellText =>
           new TableCell({
             children: [
               new Paragraph({
-                children: this.parseInlineMarkdown(cellText).map(run => new TextRun(run)),
+                children: this.parseInlineMarkdown(cellText).map(run => new TextRun({
+                  ...run,
+                  size: 20, // 10pt
+                  color: '374151', // text-gray-700
+                })),
               }),
             ],
             shading: bgColor ? {
               type: ShadingType.CLEAR,
-              color: this.rgbToHex(bgColor.r, bgColor.g, bgColor.b).replace('#', ''),
-              fill: this.rgbToHex(bgColor.r, bgColor.g, bgColor.b).replace('#', ''),
+              color: rgbToHexNoHash(bgColor),
+              fill: rgbToHexNoHash(bgColor),
             } : undefined,
+            margins: {
+              top: convertInchesToTwip(0.06),
+              bottom: convertInchesToTwip(0.06),
+              left: convertInchesToTwip(0.1),
+              right: convertInchesToTwip(0.1),
+            },
           })
         ),
       });
@@ -966,12 +999,12 @@ export class DocxGenerator {
       },
       rows: [headerRow, ...tableDataRows],
       borders: {
-        top: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
-        bottom: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
-        left: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
-        right: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
-        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
-        insideVertical: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+        top: { style: BorderStyle.SINGLE, size: 1, color: borderColorNoHash },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: borderColorNoHash },
+        left: { style: BorderStyle.SINGLE, size: 1, color: borderColorNoHash },
+        right: { style: BorderStyle.SINGLE, size: 1, color: borderColorNoHash },
+        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: borderColorNoHash },
+        insideVertical: { style: BorderStyle.SINGLE, size: 1, color: borderColorNoHash },
       },
     });
 
@@ -1395,6 +1428,7 @@ export class DocxGenerator {
 
   /**
    * Create rich themed table from table data
+   * Matches the preview styling with proper branding colors
    */
   private async createRichTable(tableData: any, templateSchema: any, branding: any = {}): Promise<Table | null> {
     try {
@@ -1417,22 +1451,29 @@ export class DocxGenerator {
       const normalizedBranding = normalizeBranding(branding);
 
       // Parse colors - prioritize per-table styling, then template styles, then branding, then defaults
-      const headerBg = this.hexToRgb(
-        styling.headerBg || tableStyles.header_bg_color || normalizedBranding.primaryColor
-      );
-      const headerText = this.hexToRgb(
-        styling.headerTextColor || tableStyles.header_text_color || normalizedBranding.headerTextColor
-      );
-      const borderColor = styling.borderColor || tableStyles.border_color || normalizedBranding.borderColor;
+      // Match preview's TableRenderer default colors
+      const headerBgColor = styling.headerBg || tableStyles.header_bg_color || normalizedBranding.primaryColor || '#3b82f6';
+      const headerTextColorHex = styling.headerTextColor || tableStyles.header_text_color || normalizedBranding.headerTextColor || '#ffffff';
+      const borderColorHex = styling.borderColor || tableStyles.border_color || normalizedBranding.borderColor || '#e5e7eb';
       const alternatingRows = styling.alternateRows !== undefined ? styling.alternateRows : (tableStyles.alternating_rows !== false);
-      const rowOddBg = this.hexToRgb(
-        styling.rowOddBg || tableStyles.row_odd_bg || normalizedBranding.rowOddBg
-      );
-      const rowEvenBg = this.hexToRgb(
-        styling.rowEvenBg || tableStyles.row_even_bg || normalizedBranding.rowEvenBg
-      );
 
-      // Create header row
+      // Match preview's alternating colors exactly: white (#ffffff) and gray (#f9fafb)
+      const rowOddBgColor = styling.rowOddBg || tableStyles.row_odd_bg || normalizedBranding.rowOddBg || '#ffffff';
+      const rowEvenBgColor = styling.rowEvenBg || tableStyles.row_even_bg || normalizedBranding.rowEvenBg || '#f9fafb';
+
+      // Parse colors to RGB
+      const headerBg = this.hexToRgb(headerBgColor);
+      const headerText = this.hexToRgb(headerTextColorHex);
+      const rowOddBg = this.hexToRgb(rowOddBgColor);
+      const rowEvenBg = this.hexToRgb(rowEvenBgColor);
+
+      // Helper to convert RGB to hex WITHOUT # prefix (DOCX requirement)
+      const rgbToHexNoHash = (rgb: { r: number; g: number; b: number } | null): string => {
+        if (!rgb) return 'FFFFFF';
+        return this.rgbToHex(rgb.r, rgb.g, rgb.b).replace('#', '');
+      };
+
+      // Create header row with styling matching preview
       const headerRow = new TableRow({
         children: headers.map((header: string) =>
           new TableCell({
@@ -1442,7 +1483,8 @@ export class DocxGenerator {
                   new TextRun({
                     text: header,
                     bold: true,
-                    color: headerText ? this.rgbToHex(headerText.r, headerText.g, headerText.b) : 'FFFFFF',
+                    color: rgbToHexNoHash(headerText),
+                    size: 22, // 11pt - slightly larger for headers
                   }),
                 ],
                 alignment: AlignmentType.CENTER,
@@ -1450,24 +1492,34 @@ export class DocxGenerator {
             ],
             shading: headerBg ? {
               type: ShadingType.CLEAR,
-              color: this.rgbToHex(headerBg.r, headerBg.g, headerBg.b),
-              fill: this.rgbToHex(headerBg.r, headerBg.g, headerBg.b),
+              color: rgbToHexNoHash(headerBg),
+              fill: rgbToHexNoHash(headerBg),
             } : undefined,
             verticalAlign: VerticalAlign.CENTER,
+            margins: {
+              top: convertInchesToTwip(0.08),
+              bottom: convertInchesToTwip(0.08),
+              left: convertInchesToTwip(0.1),
+              right: convertInchesToTwip(0.1),
+            },
           })
         ),
         tableHeader: true,
       });
 
-      // Create data rows
+      // Create data rows with alternating backgrounds matching preview
       const dataRows = rows.map((row: any[], index: number) => {
-        const isOdd = index % 2 === 0;
-        const bgColor = alternatingRows ? (isOdd ? rowOddBg : rowEvenBg) : null;
+        const isOdd = index % 2 === 0; // 0, 2, 4... are "odd" rows (first, third, etc.)
+        const bgColor = alternatingRows ? (isOdd ? rowOddBg : rowEvenBg) : rowOddBg;
+
+        // Check if this is a total/summary row
+        const firstCell = typeof row[0] === 'object' ? row[0].value : row[0];
+        const isTotalRow = String(firstCell).toUpperCase() === 'TOTAL';
 
         return new TableRow({
           children: row.map((cell: any) => {
             const cellValue = typeof cell === 'object' ? cell.value : cell;
-            const isBold = typeof cell === 'object' ? cell.bold : false;
+            const isBold = typeof cell === 'object' ? cell.bold : isTotalRow;
 
             return new TableCell({
               children: [
@@ -1476,19 +1528,30 @@ export class DocxGenerator {
                     new TextRun({
                       text: String(cellValue),
                       bold: isBold,
+                      size: 20, // 10pt for body text
+                      color: '374151', // text-gray-700 matching preview
                     }),
                   ],
                 }),
               ],
               shading: bgColor ? {
                 type: ShadingType.CLEAR,
-                color: this.rgbToHex(bgColor.r, bgColor.g, bgColor.b),
-                fill: this.rgbToHex(bgColor.r, bgColor.g, bgColor.b),
+                color: rgbToHexNoHash(bgColor),
+                fill: rgbToHexNoHash(bgColor),
               } : undefined,
+              margins: {
+                top: convertInchesToTwip(0.06),
+                bottom: convertInchesToTwip(0.06),
+                left: convertInchesToTwip(0.1),
+                right: convertInchesToTwip(0.1),
+              },
             });
           }),
         });
       });
+
+      // Border color without # prefix
+      const borderColorNoHash = borderColorHex.replace('#', '');
 
       const table = new Table({
         width: {
@@ -1497,12 +1560,12 @@ export class DocxGenerator {
         },
         rows: [headerRow, ...dataRows],
         borders: {
-          top: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
-          bottom: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
-          left: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
-          right: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
-          insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
-          insideVertical: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+          top: { style: BorderStyle.SINGLE, size: 1, color: borderColorNoHash },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: borderColorNoHash },
+          left: { style: BorderStyle.SINGLE, size: 1, color: borderColorNoHash },
+          right: { style: BorderStyle.SINGLE, size: 1, color: borderColorNoHash },
+          insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: borderColorNoHash },
+          insideVertical: { style: BorderStyle.SINGLE, size: 1, color: borderColorNoHash },
         },
       });
 
@@ -1515,6 +1578,7 @@ export class DocxGenerator {
 
   /**
    * Embed chart as image
+   * Generates high-quality chart matching preview styling
    */
   private async embedChartImage(chartData: any, branding?: any): Promise<ImageRun | null> {
     try {
@@ -1538,26 +1602,30 @@ export class DocxGenerator {
       console.log(`[DOCX] Caption: ${caption}`);
       console.log(`[DOCX] Branding Colors:`, branding);
 
+      // Chart dimensions matching preview (ChartRenderer uses height=400)
+      // Using wider aspect ratio for documents
+      const chartWidth = 600;
+      const chartHeight = 350;
+
       // Generate high-quality chart image with branding
       // Using higher resolution (scale=2) for better quality in documents
-      // Transparent background so chart blends with document
+      // White background for document clarity (matches preview container)
       const imageBuffer = await chartImageService.generateFromChartData(
         chartType,
         data,
         caption,
         {
-          width: 700,
-          height: 450,
-          backgroundColor: 'transparent',
+          width: chartWidth,
+          height: chartHeight,
+          backgroundColor: '#ffffff', // White background matching preview container
           scale: 2, // 2x resolution for crisp rendering
         },
         branding
       );
 
-      // Sharp will handle the high-res image properly
-      // Convert to appropriate size for document (will downsample the 2x image)
+      // Resize to final document size with high quality
       const resizedBuffer = await sharp(imageBuffer)
-        .resize(700, 450, {
+        .resize(chartWidth, chartHeight, {
           fit: 'inside',
           withoutEnlargement: false,
           kernel: sharp.kernel.lanczos3, // High-quality resampling
@@ -1573,8 +1641,8 @@ export class DocxGenerator {
         type: 'png',
         data: resizedBuffer,
         transformation: {
-          width: metadata.width || 600,
-          height: metadata.height || 375,
+          width: metadata.width || chartWidth,
+          height: metadata.height || chartHeight,
         },
       });
     } catch (error) {
@@ -1589,6 +1657,7 @@ export class DocxGenerator {
 
   /**
    * Embed diagram as image
+   * Generates Mermaid diagrams matching preview styling
    */
   private async embedDiagramImage(diagramData: any, branding?: any): Promise<ImageRun | null> {
     try {
@@ -1613,35 +1682,44 @@ export class DocxGenerator {
       console.log(`[DOCX] Caption: ${caption}`);
       console.log(`[DOCX] Branding Colors:`, branding);
 
-      // Generate diagram image with branding - larger for better clarity
-      // Transparent background so diagram blends with document
+      // Diagram dimensions matching preview (MermaidRenderer uses maxHeight=280-300px)
+      // Using appropriate size for documents
+      const diagramWidth = 600;
+      const diagramHeight = 350;
+
+      // Generate diagram image with branding
+      // White background for document clarity (matches preview container with white background)
       const imageBuffer = await diagramImageService.generateDiagramImage(
         code,
         {
-          width: 1600,
-          height: 1000,
-          backgroundColor: 'transparent',
-          scale: 3,
+          width: diagramWidth * 2, // Generate at 2x for quality
+          height: diagramHeight * 2,
+          backgroundColor: '#ffffff', // White background matching preview
+          scale: 2, // Additional scale for crisp text
         },
         branding
       );
 
-      // Resize for document - larger size for better readability
+      // Resize for document with high quality
       const resizedBuffer = await sharp(imageBuffer)
-        .resize(800, 600, {
+        .resize(diagramWidth, diagramHeight, {
           fit: 'inside',
           withoutEnlargement: true,
+          kernel: sharp.kernel.lanczos3, // High-quality resampling
         })
+        .png({ quality: 100, compressionLevel: 6 })
         .toBuffer();
 
       const metadata = await sharp(resizedBuffer).metadata();
+
+      console.log(`[DOCX] Diagram image: ${metadata.width}x${metadata.height}px, ${resizedBuffer.length} bytes`);
 
       return new ImageRun({
         type: 'png',
         data: resizedBuffer,
         transformation: {
-          width: metadata.width || 600,
-          height: metadata.height || 400,
+          width: metadata.width || diagramWidth,
+          height: metadata.height || diagramHeight,
         },
       });
     } catch (error) {
