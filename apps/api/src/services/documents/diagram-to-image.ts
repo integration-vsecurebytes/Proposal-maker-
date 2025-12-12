@@ -1,5 +1,13 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 
+// Extend Window interface for mermaid rendering status
+declare global {
+  interface Window {
+    mermaidRendered?: boolean;
+    mermaidError?: string;
+  }
+}
+
 export interface DiagramImageOptions {
   width?: number;
   height?: number;
@@ -93,6 +101,8 @@ export class DiagramImageService {
       const bgColor = backgroundColor === 'transparent' ? 'transparent' : backgroundColor;
 
       // Create HTML with Mermaid configuration matching preview's MermaidRenderer
+      // CRITICAL: Use startOnLoad: false and explicitly call mermaid.run() to ensure
+      // all diagram types (including mindmaps) render correctly
       const html = `
 <!DOCTYPE html>
 <html>
@@ -110,35 +120,61 @@ export class DiagramImageService {
       min-height: 100vh;
     }
     .mermaid {
-      max-width: 100%;
       font-family: ${colors.fontFamily};
     }
-    /* Force text visibility matching preview */
+    .mermaid svg {
+      max-width: none !important;
+      width: auto !important;
+      height: auto !important;
+    }
+    /* Force text visibility - MUCH LARGER fonts for documents */
     .mermaid text, .mermaid tspan {
       fill: #000000 !important;
-      font-weight: 600 !important;
-      font-size: 16px !important;
+      font-weight: 700 !important;
+      font-size: 28px !important;
     }
     .mermaid foreignObject div, .mermaid foreignObject span, .mermaid foreignObject p {
       color: #000000 !important;
-      font-weight: 600 !important;
-      font-size: 16px !important;
+      font-weight: 700 !important;
+      font-size: 28px !important;
       text-align: center !important;
+      line-height: 1.2 !important;
+    }
+    .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid .label {
+      font-size: 26px !important;
+      font-weight: 700 !important;
+      fill: #000000 !important;
+      color: #000000 !important;
+    }
+    .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon {
+      stroke-width: 3px !important;
+    }
+    .mermaid .edgePath path {
+      stroke-width: 3px !important;
+    }
+    /* Mindmap specific styles */
+    .mermaid .mindmap-node rect, .mermaid .mindmap-node circle {
+      stroke-width: 2px !important;
+    }
+    .mermaid .mindmap-node text {
+      font-size: 20px !important;
+      font-weight: 600 !important;
     }
   </style>
 </head>
 <body>
-  <div class="mermaid">
+  <div class="mermaid" id="diagram">
 ${mermaidCode}
   </div>
   <script>
+    // Initialize mermaid with startOnLoad: false
     mermaid.initialize({
-      startOnLoad: true,
+      startOnLoad: false,
       theme: 'default',
       securityLevel: 'loose',
       themeVariables: {
-        // Match preview's MermaidRenderer theme variables exactly
-        fontSize: '18px',
+        // MUCH LARGER fonts for document visibility
+        fontSize: '28px',
         primaryTextColor: '#000000',
         secondaryTextColor: '#000000',
         tertiaryTextColor: '#000000',
@@ -171,29 +207,48 @@ ${mermaidCode}
         nodeBorder: '${colors.borderColor}'
       },
       flowchart: {
-        fontSize: 16,
-        nodeSpacing: 30,
-        rankSpacing: 40,
-        padding: 20,
-        useMaxWidth: true,
+        fontSize: 26,
+        nodeSpacing: 80,
+        rankSpacing: 100,
+        padding: 40,
+        useMaxWidth: false,
         htmlLabels: true,
         curve: 'basis',
-        wrappingWidth: 150
+        wrappingWidth: 250,
+        diagramPadding: 30
       },
       sequence: {
-        fontSize: 16,
-        messageMargin: 25,
-        boxMargin: 8,
-        useMaxWidth: true
+        fontSize: 24,
+        messageMargin: 50,
+        boxMargin: 20,
+        useMaxWidth: false,
+        width: 220,
+        height: 70,
+        actorFontSize: 24,
+        noteFontSize: 22,
+        messageFontSize: 24
       },
       gantt: {
-        fontSize: 14,
-        sectionFontSize: 16,
+        fontSize: 22,
+        sectionFontSize: 24,
         numberSectionStyles: 4,
-        useMaxWidth: true,
-        barHeight: 20,
-        barGap: 4
+        useMaxWidth: false,
+        barHeight: 40,
+        barGap: 8
+      },
+      mindmap: {
+        useMaxWidth: false,
+        padding: 20
       }
+    });
+
+    // Explicitly run mermaid to render the diagram
+    // This is critical for mindmaps and other diagram types that don't render with startOnLoad
+    mermaid.run({ querySelector: '#diagram' }).then(() => {
+      window.mermaidRendered = true;
+    }).catch(err => {
+      console.error('Mermaid rendering error:', err);
+      window.mermaidError = err.message;
     });
   </script>
 </body>
@@ -202,19 +257,47 @@ ${mermaidCode}
 
       await page.setContent(html, { waitUntil: 'networkidle0' });
 
-      // Wait for Mermaid to render
+      // Wait for mermaid.run() to complete
+      await page.waitForFunction(() => window.mermaidRendered === true || window.mermaidError, { timeout: 15000 });
+
+      // Check for rendering errors
+      const renderError = await page.evaluate(() => window.mermaidError);
+      if (renderError) {
+        throw new Error(`Mermaid rendering failed: ${renderError}`);
+      }
+
+      // Wait for the SVG to be in the DOM
       await page.waitForSelector('.mermaid svg', { timeout: 10000 });
 
-      // Take a high-quality screenshot directly from the browser
-      // This preserves all text because the browser handles font rendering
-      // Transparent background so only the diagram shows in documents
-      const screenshot = await page.screenshot({
+      // Wait for SVG to have non-zero dimensions (important for mindmaps)
+      await page.waitForFunction(() => {
+        const svg = document.querySelector('.mermaid svg');
+        if (!svg) return false;
+        const bbox = svg.getBoundingClientRect();
+        return bbox.width > 0 && bbox.height > 0;
+      }, { timeout: 10000 });
+
+      // Wait a bit more for full rendering
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Get the SVG element and its bounding box
+      const svgElement = await page.$('.mermaid svg');
+      if (!svgElement) {
+        throw new Error('SVG element not found after Mermaid rendering');
+      }
+
+      // Get the bounding box of the SVG
+      const boundingBox = await svgElement.boundingBox();
+      console.log(`[Diagram] SVG bounding box:`, boundingBox);
+
+      // Take screenshot of JUST the SVG element (not the full page)
+      // This ensures the diagram fills the image
+      const screenshot = await svgElement.screenshot({
         type: 'png',
-        omitBackground: true,
-        encoding: 'binary',
+        omitBackground: backgroundColor === 'transparent',
       });
 
-      console.log(`[Diagram] Generated PNG screenshot: ${width}x${height}px at ${scale}x scale (${screenshot.length} bytes)`);
+      console.log(`[Diagram] Generated PNG from SVG element: ${boundingBox?.width}x${boundingBox?.height}px at ${scale}x scale (${screenshot.length} bytes)`);
       return screenshot as Buffer;
 
     } catch (error) {

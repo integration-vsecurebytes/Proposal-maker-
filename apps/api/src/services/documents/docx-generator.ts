@@ -1094,7 +1094,7 @@ export class DocxGenerator {
       textContent = String(content || '');
     }
 
-    // Extract JSON code blocks: ```json ... ```
+    // First pass: Extract JSON code blocks: ```json ... ```
     const jsonBlockRegex = /```json\s*\n([\s\S]*?)\n```/g;
     let match;
     let lastIndex = 0;
@@ -1107,7 +1107,7 @@ export class DocxGenerator {
       try {
         // Parse the JSON visualization
         const vizData = JSON.parse(match[1]);
-        console.log(`[DOCX] Extracted embedded visualization: ${vizData.type}`);
+        console.log(`[DOCX] Extracted embedded JSON visualization: ${vizData.type}`);
         embeddedVisualizations.push(vizData);
       } catch (error) {
         console.error('[DOCX] Failed to parse embedded JSON visualization:', error);
@@ -1118,11 +1118,37 @@ export class DocxGenerator {
       lastIndex = match.index + match[0].length;
     }
 
-    // Add remaining text after last code block
+    // Add remaining text after last JSON code block
     cleanText += textContent.substring(lastIndex);
 
+    // Second pass: Extract Mermaid code blocks: ```mermaid ... ```
+    const mermaidBlockRegex = /```mermaid\s*\n([\s\S]*?)\n```/g;
+    lastIndex = 0;
+    let finalText = '';
+
+    while ((match = mermaidBlockRegex.exec(cleanText)) !== null) {
+      // Add text before this code block
+      finalText += cleanText.substring(lastIndex, match.index);
+
+      // Create a mermaid visualization from the code block
+      const mermaidCode = match[1].trim();
+      if (mermaidCode) {
+        console.log(`[DOCX] Extracted embedded Mermaid diagram (${mermaidCode.length} chars)`);
+        embeddedVisualizations.push({
+          type: 'mermaid',
+          code: mermaidCode,
+          caption: 'Diagram'
+        });
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text after last Mermaid code block
+    finalText += cleanText.substring(lastIndex);
+
     return {
-      textContent: cleanText.trim(),
+      textContent: finalText.trim(),
       embeddedVisualizations
     };
   }
@@ -1150,11 +1176,14 @@ export class DocxGenerator {
 
   /**
    * Validate mermaid diagram data structure
+   * Accepts code in: code, diagramCode, or mermaidCode fields
    */
   private isValidDiagramData(data: any): boolean {
-    return data &&
-           typeof data.code === 'string' &&
-           data.code.trim().length > 0;
+    if (!data) return false;
+
+    // Check all possible code field names
+    const code = data.code || data.diagramCode || data.mermaidCode;
+    return typeof code === 'string' && code.trim().length > 0;
   }
 
   /**
@@ -1169,6 +1198,7 @@ export class DocxGenerator {
   /**
    * Unwrap and normalize visualization data structure
    * Handles both nested { type, data: {...} } and flat { type, ...props } formats
+   * Also normalizes code field names for diagrams
    */
   private unwrapVisualizationData(viz: any): any {
     if (!viz) {
@@ -1177,25 +1207,39 @@ export class DocxGenerator {
     }
 
     // Normalize type: "diagram" → "mermaid"
-    let normalizedType = viz.type;
-    if (viz.type === 'diagram') {
+    let normalizedType = viz.type?.toLowerCase();
+    if (normalizedType === 'diagram' || normalizedType === 'mermaid_diagram') {
       normalizedType = 'mermaid';
-      console.warn('[DOCX] Normalized type "diagram" to "mermaid"');
+      console.log('[DOCX] Normalized type to "mermaid"');
     }
+
+    let result: any;
 
     // Handle nested data structure
     if (viz.data && typeof viz.data === 'object') {
-      return {
+      result = {
         type: normalizedType,
         ...viz.data,
       };
+    } else {
+      // Flat structure
+      result = {
+        ...viz,
+        type: normalizedType,
+      };
     }
 
-    // Flat structure
-    return {
-      ...viz,
-      type: normalizedType,
-    };
+    // Normalize code field for mermaid diagrams
+    // Accept: code, diagramCode, mermaidCode
+    if (normalizedType === 'mermaid') {
+      const codeValue = result.code || result.diagramCode || result.mermaidCode;
+      if (codeValue && !result.code) {
+        result.code = codeValue;
+        console.log(`[DOCX] Normalized diagram code field (found in ${result.diagramCode ? 'diagramCode' : 'mermaidCode'})`);
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -1682,44 +1726,67 @@ export class DocxGenerator {
       console.log(`[DOCX] Caption: ${caption}`);
       console.log(`[DOCX] Branding Colors:`, branding);
 
-      // Diagram dimensions matching preview (MermaidRenderer uses maxHeight=280-300px)
-      // Using appropriate size for documents
-      const diagramWidth = 600;
-      const diagramHeight = 350;
+      // Max dimensions for DOCX - LARGER for better visibility
+      // A4 page width ~595pt, using most of the usable width
+      const maxDocWidth = 550;
+      const maxDocHeight = 500;
 
-      // Generate diagram image with branding
-      // White background for document clarity (matches preview container with white background)
+      // Generate diagram image - SVG screenshot at natural size
+      // Using large viewport to allow diagram to render fully
       const imageBuffer = await diagramImageService.generateDiagramImage(
         code,
         {
-          width: diagramWidth * 2, // Generate at 2x for quality
-          height: diagramHeight * 2,
-          backgroundColor: '#ffffff', // White background matching preview
-          scale: 2, // Additional scale for crisp text
+          width: 2000,  // Very large viewport for big diagrams
+          height: 1600,
+          backgroundColor: '#ffffff', // White background for documents
+          scale: 2, // 2x scale for crisp text
         },
         branding
       );
 
-      // Resize for document with high quality
-      const resizedBuffer = await sharp(imageBuffer)
-        .resize(diagramWidth, diagramHeight, {
-          fit: 'inside',
-          withoutEnlargement: true,
-          kernel: sharp.kernel.lanczos3, // High-quality resampling
-        })
-        .png({ quality: 100, compressionLevel: 6 })
-        .toBuffer();
+      // Get actual image dimensions from the SVG screenshot
+      const sourceMetadata = await sharp(imageBuffer).metadata();
+      const srcWidth = sourceMetadata.width || 800;
+      const srcHeight = sourceMetadata.height || 600;
+      console.log(`[DOCX] Diagram source: ${srcWidth}x${srcHeight}px`);
 
-      const metadata = await sharp(resizedBuffer).metadata();
+      // Calculate scale to fit within max dimensions while maintaining aspect ratio
+      const scaleX = maxDocWidth / srcWidth;
+      const scaleY = maxDocHeight / srcHeight;
+      const fitScale = Math.min(scaleX, scaleY, 1); // Don't enlarge
 
-      console.log(`[DOCX] Diagram image: ${metadata.width}x${metadata.height}px, ${resizedBuffer.length} bytes`);
+      const targetWidth = Math.round(srcWidth * fitScale);
+      const targetHeight = Math.round(srcHeight * fitScale);
+
+      // Resize if needed, otherwise use original
+      let finalBuffer: Buffer;
+      if (fitScale < 1) {
+        finalBuffer = await sharp(imageBuffer)
+          .resize(targetWidth, targetHeight, {
+            fit: 'inside',
+            withoutEnlargement: true,
+            kernel: sharp.kernel.lanczos3,
+          })
+          .png({ quality: 100, compressionLevel: 6 })
+          .toBuffer();
+      } else {
+        finalBuffer = await sharp(imageBuffer)
+          .png({ quality: 100, compressionLevel: 6 })
+          .toBuffer();
+      }
+
+      const metadata = await sharp(finalBuffer).metadata();
+      const finalWidth = metadata.width || targetWidth;
+      const finalHeight = metadata.height || targetHeight;
+
+      console.log(`[DOCX] Diagram final: ${finalWidth}x${finalHeight}px (scale: ${fitScale.toFixed(2)}), ${finalBuffer.length} bytes`);
 
       return new ImageRun({
         type: 'png',
-        data: resizedBuffer,
+        data: finalBuffer,
         transformation: {
-          width: metadata.width || diagramWidth,
-          height: metadata.height || diagramHeight,
+          width: finalWidth,
+          height: finalHeight,
         },
       });
     } catch (error) {
