@@ -101,8 +101,9 @@ router.post('/:id/generate', async (req, res, next) => {
 router.post('/:id/sections/:sectionId/regenerate', async (req, res, next) => {
   try {
     const { id: proposalId, sectionId } = req.params;
+    const options = req.body; // Get options from request body (includeImages, includeCharts, includeDiagrams)
 
-    const result = await proposalGenerator.regenerateSection(proposalId, sectionId);
+    const result = await proposalGenerator.regenerateSection(proposalId, sectionId, options);
 
     res.json(result);
   } catch (error) {
@@ -247,6 +248,60 @@ router.get('/:id/branding', async (req, res, next) => {
     res.json({
       success: true,
       branding: proposal.branding || {},
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PATCH /api/proposals/:id
+ * Partially update proposal fields (general update)
+ */
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const { id: proposalId } = req.params;
+    const updateData = req.body;
+
+    const [proposal] = await db
+      .select()
+      .from(proposals)
+      .where(eq(proposals.id, proposalId));
+
+    if (!proposal) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+
+    // Build update object only with provided fields
+    const updates: any = { updatedAt: new Date() };
+
+    if (updateData.title !== undefined) updates.title = updateData.title;
+    if (updateData.status !== undefined) updates.status = updateData.status;
+    if (updateData.branding !== undefined) {
+      // Merge branding with existing
+      const currentBranding = (proposal.branding as any) || {};
+      updates.branding = { ...currentBranding, ...updateData.branding };
+    }
+    if (updateData.design !== undefined) {
+      // Merge design with existing
+      const currentDesign = (proposal.design as any) || {};
+      updates.design = { ...currentDesign, ...updateData.design };
+    }
+
+    await db
+      .update(proposals)
+      .set(updates)
+      .where(eq(proposals.id, proposalId));
+
+    // Fetch updated proposal
+    const [updatedProposal] = await db
+      .select()
+      .from(proposals)
+      .where(eq(proposals.id, proposalId));
+
+    res.json({
+      success: true,
+      proposal: updatedProposal,
     });
   } catch (error) {
     next(error);

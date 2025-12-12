@@ -141,8 +141,8 @@ export const proposalApi = {
     return response.data.proposal;
   },
 
-  regenerateSection: async (proposalId: string, sectionId: string) => {
-    const response = await api.post(`/api/proposals/${proposalId}/sections/${sectionId}/regenerate`);
+  regenerateSection: async (proposalId: string, sectionId: string, options?: { includeImages?: boolean; includeCharts?: boolean; includeDiagrams?: boolean }) => {
+    const response = await api.post(`/api/proposals/${proposalId}/sections/${sectionId}/regenerate`, options);
     return response.data;
   },
 

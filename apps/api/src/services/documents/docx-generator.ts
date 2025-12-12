@@ -30,6 +30,41 @@ import { chartImageService } from './chart-to-image';
 import { diagramImageService } from './diagram-to-image';
 
 /**
+ * Normalized branding colors interface
+ */
+interface BrandingColors {
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  borderColor: string;
+  headerTextColor: string;
+  rowOddBg: string;
+  rowEvenBg: string;
+  backgroundColor: string;
+  surfaceColor: string;
+  fontFamily: string;
+}
+
+/**
+ * Normalize branding property names to camelCase
+ * Handles both camelCase (from proposal.branding) and snake_case (from template)
+ */
+function normalizeBranding(branding: any): BrandingColors {
+  return {
+    primaryColor: branding.primaryColor || branding.primary_color || '#3b82f6',
+    secondaryColor: branding.secondaryColor || branding.secondary_color || '#64748b',
+    accentColor: branding.accentColor || branding.accent_color || '#FFB347',
+    borderColor: branding.borderColor || branding.border_color || '#e5e7eb',
+    headerTextColor: branding.headerTextColor || branding.header_text_color || '#ffffff',
+    rowOddBg: branding.rowOddBg || branding.row_odd_bg || '#f9fafb',
+    rowEvenBg: branding.rowEvenBg || branding.row_even_bg || '#ffffff',
+    backgroundColor: branding.backgroundColor || branding.background_color || '#ffffff',
+    surfaceColor: branding.surfaceColor || branding.surface_color || '#f9fafb',
+    fontFamily: branding.fontFamily || branding.font_family || 'Arial, sans-serif',
+  };
+}
+
+/**
  * DOCX Generator Service
  * Generates professional Word documents from proposal content
  */
@@ -68,7 +103,15 @@ export class DocxGenerator {
     const clientLogo = proposalAssets.find((a) => a.type === 'client_logo');
 
     const templateSchema = template.schema as any;
-    const branding = templateSchema.branding || {};
+
+    // Merge branding: proposal overrides template
+    const proposalBranding = proposal.branding || {};
+    const templateBranding = templateSchema.branding || {};
+    const branding = {
+      ...templateBranding,
+      ...proposalBranding, // Proposal overrides template
+    };
+
     const generatedContent = proposal.generatedContent as any;
     const sections = generatedContent?.sections || {};
 
@@ -86,17 +129,32 @@ export class DocxGenerator {
             },
           },
         },
-        children: await this.createCoverPage(proposal, companyLogo, clientLogo),
+        children: await this.createCoverPage(proposal, companyLogo, clientLogo, branding),
       },
       // Table of contents
       {
-        properties: {},
+        properties: {
+          page: {
+            margin: {
+              top: convertInchesToTwip(1),
+              bottom: convertInchesToTwip(1),
+              left: convertInchesToTwip(1),
+              right: convertInchesToTwip(1),
+            },
+          },
+        },
         children: this.createTableOfContents(sections),
       },
       // Main content
       {
         properties: {
           page: {
+            margin: {
+              top: convertInchesToTwip(1),
+              bottom: convertInchesToTwip(1),
+              left: convertInchesToTwip(1),
+              right: convertInchesToTwip(1),
+            },
             pageNumbers: {
               start: 1,
               formatType: NumberFormat.DECIMAL,
@@ -131,22 +189,52 @@ export class DocxGenerator {
       },
       // Signature page
       {
-        properties: {},
+        properties: {
+          page: {
+            margin: {
+              top: convertInchesToTwip(1),
+              bottom: convertInchesToTwip(1),
+              left: convertInchesToTwip(1),
+              right: convertInchesToTwip(1),
+            },
+          },
+        },
         children: this.createSignaturePage(proposal),
       },
     ];
 
+    // CRITICAL: Validate that no section has empty children array
+    // This prevents Word corruption errors
+    for (let i = 0; i < docSections.length; i++) {
+      const section = docSections[i];
+      if (!section.children || section.children.length === 0) {
+        console.error(`[DOCX] Section ${i} has no children! Adding fallback paragraph.`);
+        section.children = [
+          new Paragraph({
+            text: '[Content unavailable]',
+            spacing: { after: 200 },
+          }),
+        ];
+      }
+    }
+
     // Create document
     const doc = new Document({
-      creator: proposal.extractedData?.companyName || 'Company',
+      creator: (proposal.extractedData as any)?.companyName || 'Company',
       title: proposal.projectTitle || 'Proposal',
       description: `Proposal for ${proposal.clientCompany}`,
       sections: docSections,
     });
 
     // Generate buffer
-    const buffer = await Packer.toBuffer(doc);
-    return buffer;
+    try {
+      const buffer = await Packer.toBuffer(doc);
+      console.log(`[DOCX] Generated: ${buffer.length} bytes for proposal ${proposal.id}`);
+      return buffer;
+    } catch (error) {
+      console.error(`[DOCX] Generation error for proposal ${proposal.id}:`, error);
+      throw new Error(`Failed to generate DOCX: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
@@ -155,9 +243,15 @@ export class DocxGenerator {
   private async createCoverPage(
     proposal: any,
     companyLogo: any,
-    clientLogo: any
+    clientLogo: any,
+    branding: any = {}
   ): Promise<Paragraph[]> {
     const content: Paragraph[] = [];
+
+    // Normalize branding colors
+    const normalizedBranding = normalizeBranding(branding);
+    const primaryColor = this.hexToRgb(normalizedBranding.primaryColor);
+    const secondaryColor = this.hexToRgb(normalizedBranding.secondaryColor);
 
     // Company logo
     if (companyLogo?.data) {
@@ -173,17 +267,24 @@ export class DocxGenerator {
       }
     }
 
-    // Title
+    // Title with primary color
     content.push(
       new Paragraph({
-        text: proposal.projectTitle || 'Proposal',
+        children: [
+          new TextRun({
+            text: proposal.projectTitle || 'Proposal',
+            size: 56,
+            bold: true,
+            color: primaryColor ? this.rgbToHex(primaryColor.r, primaryColor.g, primaryColor.b).replace('#', '') : '3b82f6',
+          }),
+        ],
         heading: HeadingLevel.TITLE,
         alignment: AlignmentType.CENTER,
         spacing: { before: 800, after: 400 },
       })
     );
 
-    // Client company
+    // Client company with secondary color
     content.push(
       new Paragraph({
         children: [
@@ -191,6 +292,7 @@ export class DocxGenerator {
             text: `Prepared for: ${proposal.clientCompany}`,
             size: 32,
             bold: true,
+            color: secondaryColor ? this.rgbToHex(secondaryColor.r, secondaryColor.g, secondaryColor.b).replace('#', '') : '64748b',
           }),
         ],
         alignment: AlignmentType.CENTER,
@@ -198,25 +300,37 @@ export class DocxGenerator {
       })
     );
 
-    // Client name
+    // Client name with secondary color
     if (proposal.clientName) {
       content.push(
         new Paragraph({
-          text: proposal.clientName,
+          children: [
+            new TextRun({
+              text: proposal.clientName,
+              size: 24,
+              color: secondaryColor ? this.rgbToHex(secondaryColor.r, secondaryColor.g, secondaryColor.b).replace('#', '') : '64748b',
+            }),
+          ],
           alignment: AlignmentType.CENTER,
           spacing: { after: 400 },
         })
       );
     }
 
-    // Date
+    // Date with secondary color
     content.push(
       new Paragraph({
-        text: new Date().toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        }),
+        children: [
+          new TextRun({
+            text: new Date().toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            }),
+            size: 22,
+            color: secondaryColor ? this.rgbToHex(secondaryColor.r, secondaryColor.g, secondaryColor.b).replace('#', '') : '64748b',
+          }),
+        ],
         alignment: AlignmentType.CENTER,
         spacing: { before: 800 },
       })
@@ -235,6 +349,9 @@ export class DocxGenerator {
         );
       }
     }
+
+    // Note: No need for page break here - TOC is in a separate Word section
+    // which automatically starts on a new page
 
     return content;
   }
@@ -281,11 +398,8 @@ export class DocxGenerator {
       index++;
     });
 
-    content.push(
-      new Paragraph({
-        children: [new PageBreak()],
-      })
-    );
+    // Note: No need for page break here - main content is in a separate Word section
+    // which automatically starts on a new page
 
     return content;
   }
@@ -293,14 +407,11 @@ export class DocxGenerator {
   /**
    * Create signature page
    */
-  private createSignaturePage(proposal: any): Paragraph[] {
-    const content: Paragraph[] = [];
+  private createSignaturePage(proposal: any): (Paragraph | Table)[] {
+    const content: (Paragraph | Table)[] = [];
 
-    content.push(
-      new Paragraph({
-        children: [new PageBreak()],
-      })
-    );
+    // Note: No need for page break here - signature is in a separate Word section
+    // which automatically starts on a new page
 
     content.push(
       new Paragraph({
@@ -401,11 +512,8 @@ export class DocxGenerator {
       },
     });
 
-    content.push(
-      new Paragraph({
-        children: [signatureTable as any],
-      })
-    );
+    // Add table directly to content (NOT wrapped in a Paragraph)
+    content.push(signatureTable);
 
     return content;
   }
@@ -423,117 +531,107 @@ export class DocxGenerator {
     const templateSchema = template.schema as any;
     const templateSections = templateSchema.sections || [];
 
+    // Normalize branding for consistent color access
+    const normalizedBranding = normalizeBranding(branding);
+
+    console.log(`[DOCX] ========== DOCUMENT GENERATION START ==========`);
+    console.log(`[DOCX] Proposal ID: ${proposal.id}`);
+    console.log(`[DOCX] Template sections: ${templateSections.length}`);
+    console.log(`[DOCX] Sections with content: ${Object.keys(sections).length}`);
+    console.log(`[DOCX] Available section IDs: ${Object.keys(sections).join(', ')}`);
+
+    // Track section index for page break logic
+    let sectionIndex = 0;
+    const totalSections = templateSections.filter((ts: any) => sections[ts.id]?.content).length;
+
     for (const templateSection of templateSections) {
       const sectionId = templateSection.id;
       const sectionData = sections[sectionId];
 
       if (!sectionData || !sectionData.content) {
+        console.log(`[DOCX] Skipping section ${sectionId} - no content`);
         continue;
       }
 
-      // Section title with themed color
-      const primaryColor = this.hexToRgb(branding.primary_color || '#3b82f6');
+      console.log(`\n[DOCX] ===== Processing section ${sectionId} =====`);
+      console.log(`[DOCX] Section title: ${sectionData.title || 'No title'}`);
+      console.log(`[DOCX] Content length: ${typeof sectionData.content === 'string' ? sectionData.content.length : 'not a string'} chars`);
+      console.log(`[DOCX] Has visualizations array: ${!!sectionData.visualizations}`);
+      console.log(`[DOCX] Visualizations count: ${sectionData.visualizations?.length || 0}`);
+
+      sectionIndex++;
+
+      // Section title with themed color and inline markdown parsing
+      const primaryColor = this.hexToRgb(normalizedBranding.primaryColor);
+
+      // Parse inline markdown in section title
+      const titleRuns = this.parseInlineMarkdown(sectionData.title);
+
+      // Apply primary color and bold to all runs
+      const coloredTitleRuns = titleRuns.map(run => {
+        return new TextRun({
+          text: run.text,
+          bold: run.bold !== undefined ? run.bold : true,
+          italics: run.italics,
+          color: primaryColor ? this.rgbToHex(primaryColor.r, primaryColor.g, primaryColor.b).replace('#', '') : undefined,
+          size: 32,
+        });
+      });
+
       content.push(
         new Paragraph({
-          text: sectionData.title,
+          children: coloredTitleRuns,
           heading: HeadingLevel.HEADING_1,
           spacing: {
             before: 400,
             after: 200,
           },
-          shading: primaryColor ? {
-            type: ShadingType.CLEAR,
-            color: this.rgbToHex(primaryColor.r, primaryColor.g, primaryColor.b),
-          } : undefined,
         })
       );
 
-      // Section content (text)
+      // Parse content and extract embedded visualizations
+      const { textContent, embeddedVisualizations } = this.parseContentWithVisualizations(sectionData.content);
+
+      // Section content (text only) - pass branding for colored headers
       const contentParagraphs = this.formatContent(
-        sectionData.content,
-        sectionData.contentType
+        textContent,
+        sectionData.contentType,
+        branding
       );
       content.push(...contentParagraphs);
 
-      // Process visualizations if present
-      if (sectionData.visualizations && Array.isArray(sectionData.visualizations)) {
-        for (const viz of sectionData.visualizations) {
-          try {
-            if (viz.type === 'table') {
-              // Generate rich table
-              const tableElement = await this.createRichTable(viz.data, templateSchema);
-              if (tableElement) {
-                content.push(tableElement);
-                // Add caption if present
-                if (viz.data.caption) {
-                  content.push(
-                    new Paragraph({
-                      text: viz.data.caption,
-                      italics: true,
-                      alignment: AlignmentType.CENTER,
-                      spacing: { after: 300 },
-                    })
-                  );
-                }
-              }
-            } else if (viz.type === 'chart') {
-              // Generate chart image
-              const chartImage = await this.embedChartImage(viz.data);
-              if (chartImage) {
-                content.push(
-                  new Paragraph({
-                    children: [chartImage],
-                    alignment: AlignmentType.CENTER,
-                    spacing: { before: 200, after: 200 },
-                  })
-                );
-                // Add caption
-                if (viz.data.caption) {
-                  content.push(
-                    new Paragraph({
-                      text: viz.data.caption,
-                      italics: true,
-                      alignment: AlignmentType.CENTER,
-                      spacing: { after: 300 },
-                    })
-                  );
-                }
-              }
-            } else if (viz.type === 'mermaid') {
-              // Generate diagram image
-              const diagramImage = await this.embedDiagramImage(viz.data);
-              if (diagramImage) {
-                content.push(
-                  new Paragraph({
-                    children: [diagramImage],
-                    alignment: AlignmentType.CENTER,
-                    spacing: { before: 200, after: 200 },
-                  })
-                );
-                // Add caption
-                if (viz.data.caption) {
-                  content.push(
-                    new Paragraph({
-                      text: viz.data.caption,
-                      italics: true,
-                      alignment: AlignmentType.CENTER,
-                      spacing: { after: 300 },
-                    })
-                  );
-                }
-              }
-            } else if (viz.type === 'callout') {
-              // Create callout box
-              const calloutParagraph = this.createCalloutBox(viz.data, templateSchema);
-              if (calloutParagraph) {
-                content.push(calloutParagraph);
-              }
-            }
-          } catch (error) {
-            console.error(`Failed to embed visualization (${viz.type}):`, error);
-            // Continue with other visualizations
-          }
+      // Process embedded visualizations from content
+      if (embeddedVisualizations.length > 0) {
+        console.log(`[DOCX] Found ${embeddedVisualizations.length} embedded visualizations in content`);
+        for (const viz of embeddedVisualizations) {
+          await this.processVisualization(viz, content, templateSchema, branding);
         }
+      }
+
+      // Process visualizations array if present
+      if (sectionData.visualizations && Array.isArray(sectionData.visualizations)) {
+        console.log(`\n[DOCX] ===== Processing ${sectionData.visualizations.length} visualizations from array for section ${sectionId} =====`);
+        for (let vizIndex = 0; vizIndex < sectionData.visualizations.length; vizIndex++) {
+          const viz = sectionData.visualizations[vizIndex];
+          console.log(`\n[DOCX] --- Visualization ${vizIndex + 1}/${sectionData.visualizations.length} ---`);
+          console.log(`[DOCX] Raw visualization type: ${viz.type}`);
+          console.log(`[DOCX] Raw visualization keys: ${Object.keys(viz).join(', ')}`);
+          console.log(`[DOCX] Raw visualization data:`, JSON.stringify(viz, null, 2));
+
+          // Unwrap nested data structure to flat format
+          const vizData = this.unwrapVisualizationData(viz);
+          console.log(`[DOCX] Unwrapped visualization type: ${vizData?.type}`);
+          console.log(`[DOCX] Unwrapped visualization keys: ${vizData ? Object.keys(vizData).join(', ') : 'null'}`);
+          console.log(`[DOCX] Unwrapped visualization data:`, JSON.stringify(vizData, null, 2));
+
+          await this.processVisualization(vizData, content, templateSchema, branding);
+        }
+        console.log(`[DOCX] ===== Finished processing ${sectionData.visualizations.length} visualizations =====\n`);
+      } else if (sectionData.visualizations) {
+        console.log(`[DOCX] WARNING: visualizations exists but is not an array: ${typeof sectionData.visualizations}`);
+        console.log(`[DOCX] Visualizations value:`, sectionData.visualizations);
+      } else {
+        console.log(`[DOCX] No visualizations array found for section ${sectionId}`);
       }
 
       // Add spacing after section
@@ -543,20 +641,59 @@ export class DocxGenerator {
           spacing: { after: 300 },
         })
       );
+
+      // Add page break after section (except for the last section)
+      // Last section doesn't need a page break since signature is in a separate Word section
+      if (sectionIndex < totalSections) {
+        content.push(
+          new Paragraph({
+            children: [new PageBreak()],
+          })
+        );
+      }
+    }
+
+    console.log(`[DOCX] createContent returning ${content.length} elements (paragraphs/tables)`);
+
+    // CRITICAL: Ensure content is never empty
+    if (content.length === 0) {
+      console.error('[DOCX] WARNING: No content generated! Adding fallback paragraph.');
+      content.push(
+        new Paragraph({
+          text: '[No content available for this proposal]',
+          spacing: { after: 200 },
+        })
+      );
     }
 
     return content;
   }
 
   /**
-   * Format content based on type
+   * Format content based on type - with Markdown support
    */
-  private formatContent(content: string, contentType: string): Paragraph[] {
-    const paragraphs: Paragraph[] = [];
+  private formatContent(content: any, contentType: string, branding: any = {}): (Paragraph | Table)[] {
+    const paragraphs: (Paragraph | Table)[] = [];
+
+    // Normalize branding colors
+    const normalizedBranding = normalizeBranding(branding);
+    const primaryColor = this.hexToRgb(normalizedBranding.primaryColor);
+    const secondaryColor = this.hexToRgb(normalizedBranding.secondaryColor);
+
+    // Extract text content if it's an object
+    let textContent: string;
+    if (typeof content === 'string') {
+      textContent = content;
+    } else if (content && typeof content === 'object') {
+      // Handle object content - extract text property or stringify
+      textContent = content.text || content.content || JSON.stringify(content, null, 2);
+    } else {
+      textContent = String(content || '');
+    }
 
     if (contentType === 'bullets') {
       // Handle bullet points
-      const lines = content.split('\n').filter((line) => line.trim());
+      const lines = textContent.split('\n').filter((line) => line.trim());
 
       for (const line of lines) {
         const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
@@ -576,12 +713,11 @@ export class DocxGenerator {
       }
     } else if (contentType === 'table') {
       // For tables, just format as monospace text for now
-      // In a real implementation, you'd parse and create actual tables
       paragraphs.push(
         new Paragraph({
           children: [
             new TextRun({
-              text: content,
+              text: textContent,
               font: 'Courier New',
               size: 20,
             }),
@@ -592,24 +728,621 @@ export class DocxGenerator {
         })
       );
     } else {
-      // Regular paragraphs
-      const lines = content.split('\n\n');
+      // Regular paragraphs with Markdown parsing
+      const lines = textContent.split('\n');
+      let i = 0;
 
-      for (const para of lines) {
-        if (para.trim()) {
+      while (i < lines.length) {
+        const trimmedLine = lines[i].trim();
+
+        // Skip empty lines
+        if (!trimmedLine) {
+          i++;
+          continue;
+        }
+
+        // Skip horizontal rules
+        if (trimmedLine === '---' || trimmedLine === '***' || trimmedLine === '___') {
           paragraphs.push(
             new Paragraph({
-              text: para.trim(),
+              text: '',
+              spacing: { before: 200, after: 200 },
+            })
+          );
+          i++;
+          continue;
+        }
+
+        // Parse Markdown tables: | header | header |
+        if (trimmedLine.startsWith('|')) {
+          const tableResult = this.parseMarkdownTable(lines, i, branding);
+          if (tableResult.table) {
+            paragraphs.push(tableResult.table);
+            i = tableResult.nextIndex;
+            continue;
+          }
+        }
+
+        // Parse Markdown headers: # Header, ## Header, ### Header, #### Header, ##### Header, ###### Header
+        const headerMatch = trimmedLine.match(/^(#{1,6})\s+(.+)$/);
+        if (headerMatch) {
+          const level = headerMatch[1].length;
+          const headerText = headerMatch[2].trim();
+
+          // Map markdown levels to Word heading levels (h1-h6)
+          const headingLevel = level === 1 ? HeadingLevel.HEADING_2 :
+                               level === 2 ? HeadingLevel.HEADING_3 :
+                               level === 3 ? HeadingLevel.HEADING_3 :
+                               level === 4 ? HeadingLevel.HEADING_4 :
+                               level === 5 ? HeadingLevel.HEADING_5 :
+                               HeadingLevel.HEADING_6;
+
+          // Use primary color for h1, secondary for others
+          const headerColor = level === 1 ? primaryColor : secondaryColor;
+
+          // Font sizes for different heading levels
+          const fontSize = level === 1 ? 32 :
+                          level === 2 ? 28 :
+                          level === 3 ? 26 :
+                          level === 4 ? 24 :
+                          level === 5 ? 22 :
+                          20;
+
+          // Parse inline markdown in header text
+          const headerRuns = this.parseInlineMarkdown(headerText);
+
+          // Apply header color and size to all runs
+          const coloredRuns = headerRuns.map(run => {
+            return new TextRun({
+              text: run.text,
+              bold: run.bold !== undefined ? run.bold : true,
+              italics: run.italics,
+              color: headerColor ? this.rgbToHex(headerColor.r, headerColor.g, headerColor.b).replace('#', '') : undefined,
+              size: fontSize,
+            });
+          });
+
+          // Create paragraph with formatted text runs
+          const headerParagraph = new Paragraph({
+            heading: headingLevel,
+            spacing: {
+              before: 300,
+              after: 150,
+            },
+            children: coloredRuns
+          });
+
+          paragraphs.push(headerParagraph);
+          i++;
+          continue;
+        }
+
+        // Parse bullet points: - item or * item
+        const bulletMatch = trimmedLine.match(/^[\-\*]\s+(.+)$/);
+        if (bulletMatch) {
+          const bulletText = bulletMatch[1].trim();
+          const textRuns = this.parseInlineMarkdown(bulletText);
+
+          paragraphs.push(
+            new Paragraph({
+              children: textRuns.map(run => new TextRun(run)),
+              bullet: {
+                level: 0,
+              },
               spacing: {
-                after: 200,
+                after: 100,
               },
             })
           );
+          i++;
+          continue;
         }
+
+        // Regular text with inline formatting
+        const textRuns = this.parseInlineMarkdown(trimmedLine);
+
+        paragraphs.push(
+          new Paragraph({
+            children: textRuns.map(run => new TextRun(run)),
+            spacing: {
+              after: 150,
+            },
+          })
+        );
+        i++;
       }
     }
 
     return paragraphs;
+  }
+
+  /**
+   * Parse Markdown table and convert to Word Table with dynamic branding colors
+   */
+  private parseMarkdownTable(lines: string[], startIndex: number, branding: any = {}): { table: Table | null; nextIndex: number } {
+    const tableLine = lines[startIndex].trim();
+
+    // Check if this is a table header row
+    if (!tableLine.startsWith('|') || !tableLine.endsWith('|')) {
+      return { table: null, nextIndex: startIndex + 1 };
+    }
+
+    // Parse header row
+    const headerCells = tableLine
+      .split('|')
+      .map(cell => cell.trim())
+      .filter(cell => cell.length > 0);
+
+    // Check for separator row (e.g., |---|---|)
+    let currentIndex = startIndex + 1;
+    if (currentIndex >= lines.length) {
+      return { table: null, nextIndex: startIndex + 1 };
+    }
+
+    const separatorLine = lines[currentIndex].trim();
+    if (!separatorLine.match(/^\|[\s\-:]+\|/)) {
+      return { table: null, nextIndex: startIndex + 1 };
+    }
+    currentIndex++;
+
+    // Parse data rows
+    const dataRows: string[][] = [];
+    while (currentIndex < lines.length) {
+      const rowLine = lines[currentIndex].trim();
+      if (!rowLine.startsWith('|') || !rowLine.endsWith('|')) {
+        break;
+      }
+
+      const rowCells = rowLine
+        .split('|')
+        .map(cell => cell.trim())
+        .filter(cell => cell.length > 0);
+
+      dataRows.push(rowCells);
+      currentIndex++;
+    }
+
+    // Normalize branding for consistent colors
+    const normalizedBranding = normalizeBranding(branding);
+    const primaryColor = this.hexToRgb(normalizedBranding.primaryColor);
+    const headerTextColor = this.hexToRgb(normalizedBranding.headerTextColor);
+    const borderColor = normalizedBranding.borderColor.replace('#', '');
+    const rowOddBg = this.hexToRgb(normalizedBranding.rowOddBg);
+    const rowEvenBg = this.hexToRgb(normalizedBranding.rowEvenBg);
+
+    // Create Word table with dynamic colors
+    const headerRow = new TableRow({
+      children: headerCells.map(cellText =>
+        new TableCell({
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: cellText,
+                  bold: true,
+                  color: headerTextColor ? this.rgbToHex(headerTextColor.r, headerTextColor.g, headerTextColor.b).replace('#', '') : 'FFFFFF',
+                }),
+              ],
+              alignment: AlignmentType.CENTER,
+            }),
+          ],
+          shading: primaryColor ? {
+            type: ShadingType.CLEAR,
+            color: this.rgbToHex(primaryColor.r, primaryColor.g, primaryColor.b).replace('#', ''),
+            fill: this.rgbToHex(primaryColor.r, primaryColor.g, primaryColor.b).replace('#', ''),
+          } : undefined,
+          verticalAlign: VerticalAlign.CENTER,
+        })
+      ),
+      tableHeader: true,
+    });
+
+    const tableDataRows = dataRows.map((row, rowIndex) => {
+      const isEven = rowIndex % 2 === 0;
+      const bgColor = isEven ? rowOddBg : rowEvenBg;
+
+      return new TableRow({
+        children: row.map(cellText =>
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: this.parseInlineMarkdown(cellText).map(run => new TextRun(run)),
+              }),
+            ],
+            shading: bgColor ? {
+              type: ShadingType.CLEAR,
+              color: this.rgbToHex(bgColor.r, bgColor.g, bgColor.b).replace('#', ''),
+              fill: this.rgbToHex(bgColor.r, bgColor.g, bgColor.b).replace('#', ''),
+            } : undefined,
+          })
+        ),
+      });
+    });
+
+    const table = new Table({
+      width: {
+        size: 100,
+        type: WidthType.PERCENTAGE,
+      },
+      rows: [headerRow, ...tableDataRows],
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+        left: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+        right: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+        insideVertical: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+      },
+    });
+
+    return { table, nextIndex: currentIndex };
+  }
+
+  /**
+   * Parse inline Markdown formatting (bold, italic)
+   * Returns plain objects that can be converted to TextRun
+   */
+  private parseInlineMarkdown(text: string): Array<{ text: string; bold?: boolean; italics?: boolean }> {
+    const runs: Array<{ text: string; bold?: boolean; italics?: boolean }> = [];
+    let currentIndex = 0;
+
+    // Match **bold** or __bold__
+    const boldRegex = /(\*\*|__)(.*?)\1/g;
+    // Match *italic* or _italic_
+    const italicRegex = /(\*|_)(.*?)\1/g;
+
+    // Combined regex to match bold and italic
+    const combinedRegex = /(\*\*|__)(.*?)\1|(\*|_)(.*?)\3/g;
+
+    let match;
+    const matches: Array<{ index: number; length: number; text: string; bold: boolean; italic: boolean }> = [];
+
+    // Find all bold patterns
+    while ((match = boldRegex.exec(text)) !== null) {
+      matches.push({
+        index: match.index,
+        length: match[0].length,
+        text: match[2],
+        bold: true,
+        italic: false,
+      });
+    }
+
+    // Sort matches by index
+    matches.sort((a, b) => a.index - b.index);
+
+    // If no formatting found, return plain text
+    if (matches.length === 0) {
+      return [{ text }];
+    }
+
+    // Build text runs with formatting
+    for (const match of matches) {
+      // Add plain text before this match
+      if (match.index > currentIndex) {
+        const plainText = text.substring(currentIndex, match.index);
+        if (plainText) {
+          runs.push({ text: plainText });
+        }
+      }
+
+      // Add formatted text
+      runs.push({
+        text: match.text,
+        bold: match.bold,
+        italics: match.italic,
+      });
+
+      currentIndex = match.index + match.length;
+    }
+
+    // Add remaining plain text
+    if (currentIndex < text.length) {
+      const remainingText = text.substring(currentIndex);
+      if (remainingText) {
+        runs.push({ text: remainingText });
+      }
+    }
+
+    return runs;
+  }
+
+  /**
+   * Parse content and extract embedded JSON visualizations
+   */
+  private parseContentWithVisualizations(content: any): { textContent: string; embeddedVisualizations: any[] } {
+    let textContent = '';
+    const embeddedVisualizations: any[] = [];
+
+    // Convert to string if needed
+    if (typeof content === 'object') {
+      textContent = content.text || content.content || JSON.stringify(content);
+    } else {
+      textContent = String(content || '');
+    }
+
+    // Extract JSON code blocks: ```json ... ```
+    const jsonBlockRegex = /```json\s*\n([\s\S]*?)\n```/g;
+    let match;
+    let lastIndex = 0;
+    let cleanText = '';
+
+    while ((match = jsonBlockRegex.exec(textContent)) !== null) {
+      // Add text before this code block
+      cleanText += textContent.substring(lastIndex, match.index);
+
+      try {
+        // Parse the JSON visualization
+        const vizData = JSON.parse(match[1]);
+        console.log(`[DOCX] Extracted embedded visualization: ${vizData.type}`);
+        embeddedVisualizations.push(vizData);
+      } catch (error) {
+        console.error('[DOCX] Failed to parse embedded JSON visualization:', error);
+        // If parsing fails, keep the code block as text
+        cleanText += match[0];
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text after last code block
+    cleanText += textContent.substring(lastIndex);
+
+    return {
+      textContent: cleanText.trim(),
+      embeddedVisualizations
+    };
+  }
+
+  /**
+   * Validate table visualization data structure
+   */
+  private isValidTableData(data: any): boolean {
+    return data &&
+           Array.isArray(data.headers) &&
+           data.headers.length > 0 &&
+           Array.isArray(data.rows) &&
+           data.rows.length > 0;
+  }
+
+  /**
+   * Validate chart visualization data structure
+   */
+  private isValidChartData(data: any): boolean {
+    return data &&
+           typeof data.chartType === 'string' &&
+           data.chartData !== undefined &&
+           data.chartData !== null;
+  }
+
+  /**
+   * Validate mermaid diagram data structure
+   */
+  private isValidDiagramData(data: any): boolean {
+    return data &&
+           typeof data.code === 'string' &&
+           data.code.trim().length > 0;
+  }
+
+  /**
+   * Validate callout data structure
+   */
+  private isValidCalloutData(data: any): boolean {
+    return data &&
+           typeof data.title === 'string' &&
+           typeof data.content === 'string';
+  }
+
+  /**
+   * Unwrap and normalize visualization data structure
+   * Handles both nested { type, data: {...} } and flat { type, ...props } formats
+   */
+  private unwrapVisualizationData(viz: any): any {
+    if (!viz) {
+      console.error('[DOCX] Null visualization');
+      return null;
+    }
+
+    // Normalize type: "diagram" → "mermaid"
+    let normalizedType = viz.type;
+    if (viz.type === 'diagram') {
+      normalizedType = 'mermaid';
+      console.warn('[DOCX] Normalized type "diagram" to "mermaid"');
+    }
+
+    // Handle nested data structure
+    if (viz.data && typeof viz.data === 'object') {
+      return {
+        type: normalizedType,
+        ...viz.data,
+      };
+    }
+
+    // Flat structure
+    return {
+      ...viz,
+      type: normalizedType,
+    };
+  }
+
+  /**
+   * Add fallback content when visualization fails
+   */
+  private addVisualizationFallback(content: (Paragraph | Table)[], vizType: string, reason: string): void {
+    content.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: `[Visualization Unavailable: ${vizType}]`,
+            italics: true,
+            color: '999999',
+          }),
+        ],
+        spacing: { before: 200, after: 200 },
+        alignment: AlignmentType.CENTER,
+      })
+    );
+    console.log(`[DOCX] Added fallback for ${vizType}: ${reason}`);
+  }
+
+  /**
+   * Process a single visualization and add to content
+   */
+  private async processVisualization(viz: any, content: (Paragraph | Table)[], templateSchema: any, branding: any = {}): Promise<void> {
+    try {
+      // Normalize data structure and branding
+      const normalizedViz = this.unwrapVisualizationData(viz);
+      const normalizedBranding = normalizeBranding(branding);
+      const vizType = normalizedViz.type;
+
+      console.log(`[DOCX] Processing ${vizType} visualization with data:`,
+                  Object.keys(normalizedViz).filter(k => k !== 'type'));
+
+      if (vizType === 'table') {
+        // Validate table data structure
+        if (!this.isValidTableData(normalizedViz)) {
+          console.error(`[DOCX] Invalid table data structure:`, normalizedViz);
+          this.addVisualizationFallback(content, 'table', 'Invalid table data structure');
+          return;
+        }
+
+        // Generate rich table
+        const tableElement = await this.createRichTable(normalizedViz, templateSchema, branding);
+        if (tableElement) {
+          content.push(tableElement);
+          // Add caption if present
+          if (normalizedViz.caption) {
+            content.push(
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: normalizedViz.caption,
+                    italics: true,
+                  })
+                ],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 300 },
+              })
+            );
+          }
+        } else {
+          this.addVisualizationFallback(content, 'table', 'Failed to render table');
+        }
+      } else if (vizType === 'chart') {
+        // Validate chart data structure
+        if (!this.isValidChartData(normalizedViz)) {
+          console.error('[DOCX] Chart validation failed:', {
+            hasChartType: !!normalizedViz.chartType,
+            chartType: normalizedViz.chartType,
+            hasChartData: !!normalizedViz.chartData,
+            hasLabels: !!normalizedViz.chartData?.labels,
+            hasDatasets: !!normalizedViz.chartData?.datasets,
+            labelsLength: normalizedViz.chartData?.labels?.length,
+            datasetsLength: normalizedViz.chartData?.datasets?.length,
+            fullData: JSON.stringify(normalizedViz, null, 2),
+          });
+          this.addVisualizationFallback(content, 'chart', 'Invalid chart data structure');
+          return;
+        }
+
+        // Generate chart image with branding
+        const chartImage = await this.embedChartImage(normalizedViz, normalizedBranding);
+        if (chartImage) {
+          content.push(
+            new Paragraph({
+              children: [chartImage],
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 200, after: 200 },
+            })
+          );
+          // Add caption
+          if (normalizedViz.caption) {
+            content.push(
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: normalizedViz.caption,
+                    italics: true,
+                  })
+                ],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 300 },
+              })
+            );
+          }
+        } else {
+          this.addVisualizationFallback(content, 'chart', 'Failed to render chart');
+        }
+      } else if (vizType === 'mermaid') {
+        // Validate diagram data structure
+        if (!this.isValidDiagramData(normalizedViz)) {
+          console.error('[DOCX] Diagram validation failed:', {
+            hasCode: !!normalizedViz.code,
+            hasDiagramCode: !!normalizedViz.diagramCode,
+            hasMermaidCode: !!normalizedViz.mermaidCode,
+            isCodeString: typeof (normalizedViz.code || normalizedViz.diagramCode || normalizedViz.mermaidCode) === 'string',
+            codeLength: (normalizedViz.code || normalizedViz.diagramCode || normalizedViz.mermaidCode)?.length,
+            available: Object.keys(normalizedViz),
+            fullData: JSON.stringify(normalizedViz, null, 2),
+          });
+          this.addVisualizationFallback(content, 'diagram', 'Invalid diagram data structure');
+          return;
+        }
+
+        // Generate diagram image with branding
+        const diagramImage = await this.embedDiagramImage(normalizedViz, normalizedBranding);
+        if (diagramImage) {
+          content.push(
+            new Paragraph({
+              children: [diagramImage],
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 200, after: 200 },
+            })
+          );
+          // Add caption
+          if (normalizedViz.caption) {
+            content.push(
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: normalizedViz.caption,
+                    italics: true,
+                  })
+                ],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 300 },
+              })
+            );
+          }
+        } else {
+          this.addVisualizationFallback(content, 'diagram', 'Failed to render diagram');
+        }
+      } else if (vizType === 'callout') {
+        // Validate callout data structure
+        if (!this.isValidCalloutData(normalizedViz)) {
+          console.error(`[DOCX] Invalid callout data structure:`, normalizedViz);
+          this.addVisualizationFallback(content, 'callout', 'Invalid callout data structure');
+          return;
+        }
+
+        // Create callout box
+        const calloutParagraph = this.createCalloutBox(normalizedViz, templateSchema);
+        if (calloutParagraph) {
+          content.push(calloutParagraph);
+        } else {
+          this.addVisualizationFallback(content, 'callout', 'Failed to render callout');
+        }
+      } else {
+        console.warn(`[DOCX] Unknown visualization type: ${vizType}`);
+        console.warn(`[DOCX] Full visualization data:`, JSON.stringify(normalizedViz, null, 2));
+        this.addVisualizationFallback(content, vizType || 'unknown', `Unknown visualization type: ${vizType}`);
+      }
+    } catch (error) {
+      console.error(`[DOCX] Failed to process visualization:`, error);
+      console.error(`[DOCX] Visualization that failed:`, JSON.stringify(viz, null, 2));
+      this.addVisualizationFallback(content, viz?.type || 'unknown',
+                                     error instanceof Error ? error.message : 'Unknown error');
+    }
   }
 
   /**
@@ -647,6 +1380,7 @@ export class DocxGenerator {
       const metadata = await sharp(resizedBuffer).metadata();
 
       return new ImageRun({
+        type: 'png',
         data: resizedBuffer,
         transformation: {
           width: metadata.width || maxWidth,
@@ -662,18 +1396,41 @@ export class DocxGenerator {
   /**
    * Create rich themed table from table data
    */
-  private async createRichTable(tableData: any, templateSchema: any): Promise<Table | null> {
+  private async createRichTable(tableData: any, templateSchema: any, branding: any = {}): Promise<Table | null> {
     try {
-      const { headers, rows } = tableData;
+      // Defensive validation
+      if (!tableData || !Array.isArray(tableData.headers) || !Array.isArray(tableData.rows)) {
+        console.error('[DOCX] Invalid table structure in createRichTable:', {
+          hasTableData: !!tableData,
+          hasHeaders: tableData?.headers !== undefined,
+          isHeadersArray: Array.isArray(tableData?.headers),
+          hasRows: tableData?.rows !== undefined,
+          isRowsArray: Array.isArray(tableData?.rows),
+        });
+        return null;
+      }
+
+      const { headers, rows, styling = {} } = tableData;
       const tableStyles = templateSchema.table_styles || {};
 
-      // Parse colors
-      const headerBg = this.hexToRgb(tableStyles.header_bg_color || '#3b82f6');
-      const headerText = this.hexToRgb(tableStyles.header_text_color || '#ffffff');
-      const borderColor = tableStyles.border_color || '#e5e7eb';
-      const alternatingRows = tableStyles.alternating_rows !== false;
-      const rowOddBg = this.hexToRgb(tableStyles.row_odd_bg || '#f9fafb');
-      const rowEvenBg = this.hexToRgb(tableStyles.row_even_bg || '#ffffff');
+      // Normalize branding for consistent colors
+      const normalizedBranding = normalizeBranding(branding);
+
+      // Parse colors - prioritize per-table styling, then template styles, then branding, then defaults
+      const headerBg = this.hexToRgb(
+        styling.headerBg || tableStyles.header_bg_color || normalizedBranding.primaryColor
+      );
+      const headerText = this.hexToRgb(
+        styling.headerTextColor || tableStyles.header_text_color || normalizedBranding.headerTextColor
+      );
+      const borderColor = styling.borderColor || tableStyles.border_color || normalizedBranding.borderColor;
+      const alternatingRows = styling.alternateRows !== undefined ? styling.alternateRows : (tableStyles.alternating_rows !== false);
+      const rowOddBg = this.hexToRgb(
+        styling.rowOddBg || tableStyles.row_odd_bg || normalizedBranding.rowOddBg
+      );
+      const rowEvenBg = this.hexToRgb(
+        styling.rowEvenBg || tableStyles.row_even_bg || normalizedBranding.rowEvenBg
+      );
 
       // Create header row
       const headerRow = new TableRow({
@@ -740,12 +1497,12 @@ export class DocxGenerator {
         },
         rows: [headerRow, ...dataRows],
         borders: {
-          top: { style: BorderStyle.SINGLE, size: 1, color: borderColor.replace('#', '') },
-          bottom: { style: BorderStyle.SINGLE, size: 1, color: borderColor.replace('#', '') },
-          left: { style: BorderStyle.SINGLE, size: 1, color: borderColor.replace('#', '') },
-          right: { style: BorderStyle.SINGLE, size: 1, color: borderColor.replace('#', '') },
-          insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: borderColor.replace('#', '') },
-          insideVertical: { style: BorderStyle.SINGLE, size: 1, color: borderColor.replace('#', '') },
+          top: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+          left: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+          right: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+          insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
+          insideVertical: { style: BorderStyle.SINGLE, size: 1, color: (borderColor || '#e5e7eb').replace('#', '') },
         },
       });
 
@@ -759,33 +1516,61 @@ export class DocxGenerator {
   /**
    * Embed chart as image
    */
-  private async embedChartImage(chartData: any): Promise<ImageRun | null> {
+  private async embedChartImage(chartData: any, branding?: any): Promise<ImageRun | null> {
     try {
+      // Defensive validation
+      if (!chartData || typeof chartData.chartType !== 'string' || chartData.chartData === undefined || chartData.chartData === null) {
+        console.error('[DOCX] Invalid chart structure in embedChartImage:', {
+          hasChartData: !!chartData,
+          hasChartType: chartData?.chartType !== undefined,
+          isChartTypeString: typeof chartData?.chartType === 'string',
+          hasData: chartData?.chartData !== undefined,
+          dataIsNotNull: chartData?.chartData !== null,
+        });
+        return null;
+      }
+
       const { chartType, chartData: data, caption } = chartData;
 
-      // Generate chart image
+      console.log(`[DOCX] === CHART GENERATION START ===`);
+      console.log(`[DOCX] Chart Type: ${chartType}`);
+      console.log(`[DOCX] Chart Data:`, JSON.stringify(data, null, 2));
+      console.log(`[DOCX] Caption: ${caption}`);
+      console.log(`[DOCX] Branding Colors:`, branding);
+
+      // Generate high-quality chart image with branding
+      // Using higher resolution (scale=2) for better quality in documents
+      // Transparent background so chart blends with document
       const imageBuffer = await chartImageService.generateFromChartData(
         chartType,
         data,
         caption,
         {
-          width: 800,
-          height: 500,
-          backgroundColor: '#ffffff',
-        }
+          width: 700,
+          height: 450,
+          backgroundColor: 'transparent',
+          scale: 2, // 2x resolution for crisp rendering
+        },
+        branding
       );
 
-      // Resize for document
+      // Sharp will handle the high-res image properly
+      // Convert to appropriate size for document (will downsample the 2x image)
       const resizedBuffer = await sharp(imageBuffer)
-        .resize(600, 375, {
+        .resize(700, 450, {
           fit: 'inside',
-          withoutEnlargement: true,
+          withoutEnlargement: false,
+          kernel: sharp.kernel.lanczos3, // High-quality resampling
         })
+        .png({ quality: 100, compressionLevel: 6 })
         .toBuffer();
 
       const metadata = await sharp(resizedBuffer).metadata();
 
+      console.log(`[DOCX] Chart image: ${metadata.width}x${metadata.height}px, ${resizedBuffer.length} bytes`);
+
       return new ImageRun({
+        type: 'png',
         data: resizedBuffer,
         transformation: {
           width: metadata.width || 600,
@@ -793,7 +1578,11 @@ export class DocxGenerator {
         },
       });
     } catch (error) {
-      console.error('Failed to embed chart image:', error);
+      console.error('[DOCX] Failed to embed chart image:', {
+        chartType: chartData?.chartType,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return null;
     }
   }
@@ -801,21 +1590,45 @@ export class DocxGenerator {
   /**
    * Embed diagram as image
    */
-  private async embedDiagramImage(diagramData: any): Promise<ImageRun | null> {
+  private async embedDiagramImage(diagramData: any, branding?: any): Promise<ImageRun | null> {
     try {
-      const { code, caption } = diagramData;
+      // Normalize field names (code, diagramCode, mermaidCode)
+      const code = diagramData.code || diagramData.diagramCode || diagramData.mermaidCode;
 
-      // Generate diagram image
-      const imageBuffer = await diagramImageService.generateDiagramImage(code, {
-        width: 1200,
-        height: 800,
-        backgroundColor: '#ffffff',
-        scale: 2,
-      });
+      // Defensive validation
+      if (!diagramData || typeof code !== 'string' || !code.trim()) {
+        console.error('[DOCX] No mermaid code found:', {
+          hasDiagramData: !!diagramData,
+          checkedFields: ['code', 'diagramCode', 'mermaidCode'],
+          available: diagramData ? Object.keys(diagramData) : [],
+          fullData: JSON.stringify(diagramData, null, 2),
+        });
+        return null;
+      }
 
-      // Resize for document
+      const { caption } = diagramData;
+
+      console.log(`[DOCX] === DIAGRAM GENERATION START ===`);
+      console.log(`[DOCX] Diagram Code:`, code);
+      console.log(`[DOCX] Caption: ${caption}`);
+      console.log(`[DOCX] Branding Colors:`, branding);
+
+      // Generate diagram image with branding - larger for better clarity
+      // Transparent background so diagram blends with document
+      const imageBuffer = await diagramImageService.generateDiagramImage(
+        code,
+        {
+          width: 1600,
+          height: 1000,
+          backgroundColor: 'transparent',
+          scale: 3,
+        },
+        branding
+      );
+
+      // Resize for document - larger size for better readability
       const resizedBuffer = await sharp(imageBuffer)
-        .resize(600, 400, {
+        .resize(800, 600, {
           fit: 'inside',
           withoutEnlargement: true,
         })
@@ -824,6 +1637,7 @@ export class DocxGenerator {
       const metadata = await sharp(resizedBuffer).metadata();
 
       return new ImageRun({
+        type: 'png',
         data: resizedBuffer,
         transformation: {
           width: metadata.width || 600,
@@ -831,7 +1645,12 @@ export class DocxGenerator {
         },
       });
     } catch (error) {
-      console.error('Failed to embed diagram image:', error);
+      console.error('[DOCX] Failed to embed diagram image:', {
+        diagramType: diagramData?.diagramType,
+        codeLength: diagramData?.code?.length,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return null;
     }
   }

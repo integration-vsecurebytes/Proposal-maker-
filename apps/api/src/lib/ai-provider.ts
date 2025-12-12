@@ -9,8 +9,14 @@ import { LATEST_STABLE_MODELS } from './models';
 
 export type AIProviderType = 'gemini' | 'openai' | 'grok';
 
+export interface GenerateTextOptions {
+  jsonMode?: boolean;
+  temperature?: number;
+  maxTokens?: number;
+}
+
 export interface AIProvider {
-  generateText(prompt: string, systemPrompt?: string): Promise<string>;
+  generateText(prompt: string, systemPrompt?: string, options?: GenerateTextOptions): Promise<string>;
   generateEmbedding(text: string): Promise<number[]>;
   generateEmbeddings(texts: string[]): Promise<number[][]>;
 }
@@ -26,10 +32,23 @@ class GeminiProvider implements AIProvider {
     this.client = new GoogleGenerativeAI(apiKey);
   }
 
-  async generateText(prompt: string, systemPrompt?: string): Promise<string> {
+  async generateText(prompt: string, systemPrompt?: string, options?: GenerateTextOptions): Promise<string> {
+    const generationConfig: any = {};
+
+    if (options?.jsonMode) {
+      generationConfig.responseMimeType = 'application/json';
+    }
+    if (options?.temperature !== undefined) {
+      generationConfig.temperature = options.temperature;
+    }
+    if (options?.maxTokens !== undefined) {
+      generationConfig.maxOutputTokens = options.maxTokens;
+    }
+
     const model = this.client.getGenerativeModel({
       model: LATEST_STABLE_MODELS.gemini.pro,
       systemInstruction: systemPrompt,
+      generationConfig: Object.keys(generationConfig).length > 0 ? generationConfig : undefined,
     });
 
     const result = await model.generateContent(prompt);
@@ -66,7 +85,7 @@ class OpenAIProvider implements AIProvider {
     this.client = new OpenAI({ apiKey });
   }
 
-  async generateText(prompt: string, systemPrompt?: string): Promise<string> {
+  async generateText(prompt: string, systemPrompt?: string, options?: GenerateTextOptions): Promise<string> {
     const messages: any[] = [];
 
     if (systemPrompt) {
@@ -75,10 +94,22 @@ class OpenAIProvider implements AIProvider {
 
     messages.push({ role: 'user', content: prompt });
 
-    const completion = await this.client.chat.completions.create({
+    const requestOptions: any = {
       model: LATEST_STABLE_MODELS.openai.gpt4o,
       messages,
-    });
+    };
+
+    if (options?.jsonMode) {
+      requestOptions.response_format = { type: 'json_object' };
+    }
+    if (options?.temperature !== undefined) {
+      requestOptions.temperature = options.temperature;
+    }
+    if (options?.maxTokens !== undefined) {
+      requestOptions.max_tokens = options.maxTokens;
+    }
+
+    const completion = await this.client.chat.completions.create(requestOptions);
 
     return completion.choices[0]?.message?.content || '';
   }
@@ -116,7 +147,7 @@ class GrokProvider implements AIProvider {
     });
   }
 
-  async generateText(prompt: string, systemPrompt?: string): Promise<string> {
+  async generateText(prompt: string, systemPrompt?: string, options?: GenerateTextOptions): Promise<string> {
     const messages: any[] = [];
 
     if (systemPrompt) {
@@ -125,10 +156,22 @@ class GrokProvider implements AIProvider {
 
     messages.push({ role: 'user', content: prompt });
 
-    const completion = await this.client.chat.completions.create({
+    const requestOptions: any = {
       model: LATEST_STABLE_MODELS.grok.latest,
       messages,
-    });
+    };
+
+    if (options?.jsonMode) {
+      requestOptions.response_format = { type: 'json_object' };
+    }
+    if (options?.temperature !== undefined) {
+      requestOptions.temperature = options.temperature;
+    }
+    if (options?.maxTokens !== undefined) {
+      requestOptions.max_tokens = options.maxTokens;
+    }
+
+    const completion = await this.client.chat.completions.create(requestOptions);
 
     return completion.choices[0]?.message?.content || '';
   }

@@ -7,6 +7,23 @@ export interface DiagramImageOptions {
   scale?: number;
 }
 
+/**
+ * Normalize branding colors from either camelCase or snake_case
+ */
+function normalizeBranding(branding: any) {
+  return {
+    primaryColor: branding?.primaryColor || branding?.primary_color || '#3b82f6',
+    secondaryColor: branding?.secondaryColor || branding?.secondary_color || '#64748b',
+    accentColor: branding?.accentColor || branding?.accent_color || '#8b5cf6',
+    borderColor: branding?.borderColor || branding?.border_color || '#cbd5e1',
+    textColor: branding?.textColor || branding?.text_color || '#1e293b',
+    headerTextColor: branding?.headerTextColor || branding?.header_text_color || '#1e293b',
+    backgroundColor: branding?.backgroundColor || branding?.background_color || '#ffffff',
+    surfaceColor: branding?.surfaceColor || branding?.surface_color || '#f8fafc',
+    fontFamily: branding?.fontFamily || branding?.font_family || 'system-ui, sans-serif',
+  };
+}
+
 export class DiagramImageService {
   private browser: Browser | null = null;
 
@@ -40,10 +57,12 @@ export class DiagramImageService {
 
   /**
    * Generate a PNG image from Mermaid diagram code
+   * Uses Puppeteer screenshot for better text rendering
    */
   async generateDiagramImage(
     mermaidCode: string,
-    options: DiagramImageOptions = {}
+    options: DiagramImageOptions = {},
+    branding?: any
   ): Promise<Buffer> {
     const {
       width = 1200,
@@ -55,13 +74,22 @@ export class DiagramImageService {
     let page: Page | null = null;
 
     try {
+      console.log('[Diagram] Generating diagram via Puppeteer screenshot...');
+
       const browser = await this.initBrowser();
       page = await browser.newPage();
 
-      // Set viewport
-      await page.setViewport({ width, height, deviceScaleFactor: scale });
+      // Set viewport with high DPI for better quality
+      await page.setViewport({
+        width: width,
+        height: height,
+        deviceScaleFactor: scale,
+      });
 
-      // Create HTML with Mermaid
+      // Normalize branding colors
+      const colors = normalizeBranding(branding);
+
+      // Create HTML with Mermaid configuration
       const html = `
 <!DOCTYPE html>
 <html>
@@ -72,7 +100,7 @@ export class DiagramImageService {
     body {
       margin: 0;
       padding: 20px;
-      background-color: ${backgroundColor};
+      background-color: transparent;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -80,6 +108,7 @@ export class DiagramImageService {
     }
     .mermaid {
       max-width: 100%;
+      font-family: ${colors.fontFamily};
     }
   </style>
 </head>
@@ -90,10 +119,29 @@ ${mermaidCode}
   <script>
     mermaid.initialize({
       startOnLoad: true,
-      theme: 'default',
+      theme: 'base',
       themeVariables: {
-        fontSize: '16px',
-        fontFamily: 'Inter, system-ui, sans-serif'
+        primaryColor: '${colors.primaryColor}',
+        primaryTextColor: '#000000',
+        primaryBorderColor: '${colors.primaryColor}',
+        secondaryColor: '${colors.secondaryColor}',
+        secondaryTextColor: '#000000',
+        tertiaryColor: '${colors.accentColor}',
+        tertiaryTextColor: '#000000',
+        lineColor: '${colors.borderColor}',
+        textColor: '#000000',
+        background: 'transparent',
+        mainBkg: '${colors.surfaceColor}',
+        fontSize: '18px',
+        fontFamily: '${colors.fontFamily}',
+        nodeBorder: '${colors.borderColor}',
+        nodeTextColor: '#000000',
+        edgeLabelBackground: 'transparent',
+        clusterBkg: '${colors.surfaceColor}',
+        clusterBorder: '${colors.borderColor}',
+        labelTextColor: '#000000',
+        labelColor: '#000000',
+        signalTextColor: '#000000'
       },
       flowchart: {
         useMaxWidth: true,
@@ -111,22 +159,21 @@ ${mermaidCode}
       // Wait for Mermaid to render
       await page.waitForSelector('.mermaid svg', { timeout: 10000 });
 
-      // Get the SVG element dimensions
-      const svgElement = await page.$('.mermaid svg');
-      if (!svgElement) {
-        throw new Error('Mermaid diagram did not render');
-      }
-
-      // Take screenshot of the SVG element
-      const screenshot = await svgElement.screenshot({
+      // Take a high-quality screenshot directly from the browser
+      // This preserves all text because the browser handles font rendering
+      // Transparent background so only the diagram shows in documents
+      const screenshot = await page.screenshot({
         type: 'png',
-        omitBackground: backgroundColor === 'transparent',
+        omitBackground: true,
+        encoding: 'binary',
       });
 
+      console.log(`[Diagram] Generated PNG screenshot: ${width}x${height}px at ${scale}x scale (${screenshot.length} bytes)`);
       return screenshot as Buffer;
+
     } catch (error) {
-      console.error('Error generating diagram image:', error);
-      throw new Error(`Failed to generate diagram image: ${error.message}`);
+      console.error('[Diagram] Error generating diagram image:', error);
+      throw new Error(`Failed to generate diagram image: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       if (page) {
         await page.close();

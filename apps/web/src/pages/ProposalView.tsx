@@ -41,6 +41,8 @@ export function ProposalView() {
   const [addingToSection, setAddingToSection] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit');
   const [brandingDialogOpen, setBrandingDialogOpen] = useState(false);
+  const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
+  const [selectedSectionForRegenerate, setSelectedSectionForRegenerate] = useState<string | null>(null);
 
   useEffect(() => {
     loadProposal();
@@ -95,19 +97,26 @@ export function ProposalView() {
     setAddingToSection(null);
   };
 
-  const handleRegenerateSection = async (sectionId: string) => {
+  const handleRegenerateSection = async (sectionId: string, options?: { includeImages?: boolean; includeCharts?: boolean; includeDiagrams?: boolean }) => {
     if (!proposalId) return;
 
     try {
       setRegenerating(sectionId);
-      await proposalApi.regenerateSection(proposalId, sectionId);
+      await proposalApi.regenerateSection(proposalId, sectionId, options);
       await loadProposal();
+      setRegenerateDialogOpen(false);
+      setSelectedSectionForRegenerate(null);
     } catch (error) {
       console.error('Failed to regenerate section:', error);
       alert('Failed to regenerate section. Please try again.');
     } finally {
       setRegenerating(null);
     }
+  };
+
+  const openRegenerateDialog = (sectionId: string) => {
+    setSelectedSectionForRegenerate(sectionId);
+    setRegenerateDialogOpen(true);
   };
 
   const handleBrandingSave = async (branding: any) => {
@@ -186,17 +195,56 @@ export function ProposalView() {
     clientCompany: proposal.clientCompany,
     companyName: proposal.companyName || 'Your Company',
     date: proposal.createdAt,
-    sections: Object.entries(sections).map(([id, data]: [string, any], index) => ({
-      id,
-      type: data.type || 'general',
-      title: data.title,
-      content: data.content,
-      data: {
-        ...data.data,
-        visualizations: data.visualizations || [], // Include AI-generated visualizations
-      },
-      order: index + 1,
-    })),
+    sections: Object.entries(sections).map(([id, data]: [string, any], index) => {
+      // Get manually added visualizations for this section from database
+      const manualVisualizations = visualizations
+        .filter((v) => v.sectionId === id)
+        .map((v) => {
+          // Map database types to preview types
+          // Database has 'chart' and 'diagram', but preview expects 'chart' and 'mermaid'
+          const previewType = v.type === 'chart' ? 'chart' : 'mermaid';
+
+          if (v.type === 'chart') {
+            // For charts, extract the config properties for preview
+            const config = v.config as any;
+            return {
+              type: 'chart',
+              chartType: config.type, // Chart type (bar, line, pie, etc.)
+              chartData: {
+                labels: config.labels,
+                datasets: config.datasets,
+              },
+              caption: config.title, // Use title as caption
+            };
+          } else {
+            // For diagrams (mermaid)
+            const config = v.config as any;
+            return {
+              type: 'mermaid',
+              code: config.code, // Mermaid code
+              caption: config.title, // Use title as caption
+            };
+          }
+        });
+
+      // Combine AI-generated and manually added visualizations
+      const allVisualizations = [
+        ...(data.visualizations || []),
+        ...manualVisualizations,
+      ];
+
+      return {
+        id,
+        type: data.type || 'general',
+        title: data.title,
+        content: data.content,
+        data: {
+          ...data.data,
+          visualizations: allVisualizations, // Include both AI-generated and manual visualizations
+        },
+        order: index + 1,
+      };
+    }),
     branding: {
       // Extract from template.schema.branding
       primaryColor: template?.schema?.branding?.primary_color || '#3b82f6',
@@ -304,6 +352,17 @@ export function ProposalView() {
               <Button
                 variant="outline"
                 onClick={() => {
+                  window.open(`/api/export/${proposalId}/html`, '_blank');
+                }}
+                className="gap-2"
+              >
+                <FileDown className="w-4 h-4" />
+                Export HTML
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => {
                   window.print();
                 }}
                 className="gap-2"
@@ -329,6 +388,59 @@ export function ProposalView() {
                     currentBranding={transformedProposal.branding}
                     onSave={handleBrandingSave}
                   />
+                </DialogContent>
+              </Dialog>
+
+              {/* Regenerate Options Dialog */}
+              <Dialog open={regenerateDialogOpen} onOpenChange={setRegenerateDialogOpen}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Regenerate Content</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <p className="text-sm text-muted-foreground">
+                      Select what type of content you want to regenerate:
+                    </p>
+                    <div className="space-y-3">
+                      <Button
+                        onClick={() => selectedSectionForRegenerate && handleRegenerateSection(selectedSectionForRegenerate, {})}
+                        className="w-full justify-start gap-2"
+                        variant="outline"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Text Content Only
+                      </Button>
+                      <Button
+                        onClick={() => selectedSectionForRegenerate && handleRegenerateSection(selectedSectionForRegenerate, { includeImages: true })}
+                        className="w-full justify-start gap-2"
+                        variant="outline"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        With Images & Pictures
+                      </Button>
+                      <Button
+                        onClick={() => selectedSectionForRegenerate && handleRegenerateSection(selectedSectionForRegenerate, { includeCharts: true })}
+                        className="w-full justify-start gap-2"
+                        variant="outline"
+                      >
+                        📊 With Charts
+                      </Button>
+                      <Button
+                        onClick={() => selectedSectionForRegenerate && handleRegenerateSection(selectedSectionForRegenerate, { includeDiagrams: true })}
+                        className="w-full justify-start gap-2"
+                        variant="outline"
+                      >
+                        🔄 With Diagrams
+                      </Button>
+                      <Button
+                        onClick={() => selectedSectionForRegenerate && handleRegenerateSection(selectedSectionForRegenerate, { includeImages: true, includeCharts: true, includeDiagrams: true })}
+                        className="w-full justify-start gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        Everything (Text + Images + Charts + Diagrams)
+                      </Button>
+                    </div>
+                  </div>
                 </DialogContent>
               </Dialog>
             </div>
@@ -390,7 +502,7 @@ export function ProposalView() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleRegenerateSection(sectionId)}
+                        onClick={() => openRegenerateDialog(sectionId)}
                         disabled={regenerating === sectionId}
                         className="opacity-0 group-hover:opacity-100 transition-opacity"
                       >

@@ -29,7 +29,9 @@
   padding: 15mm 25mm !important; /* A4 margins: reduced top/bottom for header/footer */
   max-width: 210mm;
   box-sizing: border-box;
-  overflow: visible;
+  overflow: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Footer positioning in A4 layout */
@@ -44,6 +46,9 @@
   page-break-inside: auto; /* Allow sections to break across pages if needed */
   background: white;
   margin: 0;
+  overflow: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .proposal-preview.a4-layout .space-y-12 {
@@ -265,6 +270,9 @@
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   transition: box-shadow 0.3s ease;
+  overflow: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .proposal-preview .section:hover {
@@ -364,12 +372,18 @@
   line-height: 1.8;
   margin-bottom: 1.25rem;
   color: #374151;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 /* List Styling */
 .proposal-preview ul, .proposal-preview ol {
   margin: 1.5rem 0;
   padding-left: 2rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .proposal-preview li {
@@ -377,6 +391,9 @@
   line-height: 1.7;
   color: #4b5563;
   position: relative;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .proposal-preview ul li::marker {
@@ -388,6 +405,17 @@
 .proposal-preview strong {
   color: var(--primary-color);
   font-weight: 600;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Prose and text content overflow handling */
+.proposal-preview .prose,
+.proposal-preview .text-gray-700 {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Visual Element Containers */
@@ -722,14 +750,14 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 300px;
-  max-height: 600px;
+  min-height: 200px;
+  max-height: 300px;
   overflow: auto;
 }
 
 .proposal-preview .mermaid svg {
   max-width: 100%;
-  max-height: 600px;
+  max-height: 300px;
   height: auto;
   width: auto;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
@@ -739,7 +767,7 @@
   max-width: 100%;
   overflow-x: auto;
   overflow-y: auto;
-  max-height: 650px;
+  max-height: 320px;
 }
 
 /* Force all Mermaid text to be visible - CRITICAL */
@@ -749,11 +777,60 @@
 .proposal-preview .mermaid svg .edgeLabel,
 .proposal-preview .mermaid svg .label,
 .proposal-preview .mermaid-container svg text,
-.proposal-preview .mermaid-container svg tspan {
+.proposal-preview .mermaid-container svg tspan,
+.mermaid svg text,
+.mermaid svg tspan,
+.mermaid-container svg text,
+.mermaid-container svg tspan {
   fill: #000000 !important;
   color: #000000 !important;
   font-weight: 600 !important;
-  font-size: 14px !important;
+  font-size: 16px !important;
+  text-anchor: middle !important;
+  dominant-baseline: central !important;
+}
+
+/* Force foreignObject text to be visible and centered */
+.proposal-preview .mermaid svg foreignObject,
+.proposal-preview .mermaid-container svg foreignObject,
+.mermaid svg foreignObject,
+.mermaid-container svg foreignObject {
+  overflow: visible !important;
+}
+
+.proposal-preview .mermaid svg foreignObject > div,
+.proposal-preview .mermaid-container svg foreignObject > div,
+.mermaid svg foreignObject > div,
+.mermaid-container svg foreignObject > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 100% !important;
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.proposal-preview .mermaid svg foreignObject div,
+.proposal-preview .mermaid svg foreignObject span,
+.proposal-preview .mermaid svg foreignObject p,
+.proposal-preview .mermaid-container svg foreignObject div,
+.proposal-preview .mermaid-container svg foreignObject span,
+.proposal-preview .mermaid-container svg foreignObject p,
+.mermaid svg foreignObject div,
+.mermaid svg foreignObject span,
+.mermaid svg foreignObject p,
+.mermaid-container svg foreignObject div,
+.mermaid-container svg foreignObject span,
+.mermaid-container svg foreignObject p {
+  color: #000000 !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  text-align: center !important;
+  line-height: 1.4 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  writing-mode: horizontal-tb !important;
 }
 
 /* Ensure label backgrounds are visible */
@@ -762,20 +839,6 @@
 .proposal-preview .mermaid-container svg .label-container {
   fill: #ffffff !important;
   stroke: #d1d5db !important;
-}
-
-/* Enable text wrapping in foreignObject elements */
-.proposal-preview .mermaid svg foreignObject,
-.proposal-preview .mermaid-container svg foreignObject {
-  overflow: visible !important;
-}
-
-.proposal-preview .mermaid svg foreignObject div,
-.proposal-preview .mermaid-container svg foreignObject div {
-  white-space: normal !important;
-  word-wrap: break-word !important;
-  overflow-wrap: break-word !important;
-  max-width: 100% !important;
 }
 
 /* Make nodes more compact */

@@ -90,6 +90,22 @@ router.put('/:id', async (req, res, next) => {
 });
 
 /**
+ * PATCH /api/templates/:id
+ * Partially update template (alias for PUT)
+ */
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    const template = await templateService.updateTemplate(id, data);
+    res.json(template);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * DELETE /api/templates/:id
  * Delete template (soft delete)
  */

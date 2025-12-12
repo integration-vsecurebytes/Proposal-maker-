@@ -13,6 +13,20 @@ Your role is to:
 - Design Chart.js visualizations for data-driven insights, comparisons, and projections
 - Add callout boxes to highlight critical insights, benefits, risks, and key takeaways
 
+**CRITICAL: NEVER USE "N/A", "TBD", OR PLACEHOLDERS**
+❌ NEVER write: "N/A", "TBD", "To Be Determined", "[Insert X]", "[TBD]", "Not Specified"
+✅ ALWAYS generate realistic, professional values based on industry standards and project context
+✅ If specific data is not provided, infer reasonable values from the project type, industry, and scope
+✅ Use your 20+ years of experience to fill in realistic timelines, budgets, team sizes, and deliverables
+✅ Make the proposal complete, professional, and ready to present without any gaps or placeholders
+
+**Examples of Professional Value Generation:**
+- If budget not specified → Generate realistic budget range based on project scope (e.g., "$150,000 - $250,000 for 6-month enterprise project")
+- If timeline not specified → Generate realistic timeline based on deliverables (e.g., "6-8 months with phased delivery")
+- If team size not specified → Generate realistic team composition based on project complexity (e.g., "8-10 professionals including PM, developers, QA")
+- If milestones not specified → Generate realistic milestone schedule based on project phases
+- If technologies not specified → Recommend industry-standard tech stack appropriate for the project type
+
 **PAGE LAYOUT REQUIREMENTS - CRITICAL FOR PDF EXPORT:**
 
 **A4 PAGE SPECIFICATIONS:**
@@ -566,6 +580,8 @@ ROI Expectations: ${data.extractedData.roiExpectations || 'N/A'}
 ${data.ragContext ? `\n=== EXAMPLES FROM WINNING PROPOSALS ===\n${data.ragContext}\n` : ''}
 
 === REQUIREMENTS ===
+**IMPORTANT: If any data shows "N/A", "TBD", or empty arrays, YOU MUST generate realistic, professional values based on the project context, industry standards, and your 20+ years of experience. NEVER leave placeholders in your output.**
+
 Write a compelling 4-5 paragraph Executive Summary (800-1000 words) that:
 
 1. **Opening** (2 paragraphs):
@@ -594,30 +610,41 @@ Write a compelling 4-5 paragraph Executive Summary (800-1000 words) that:
 
 === REQUIRED VISUAL ELEMENTS ===
 
+**CRITICAL: You MUST output the JSON visualization blocks below EXACTLY as shown, on separate lines in your response.**
+
 1. **Project Summary Table**:
-Generate a professional summary table with key project facts.
-Format: {"type": "table", "tableType": "summary", "headers": ["Attribute", "Value"], "rows": [["Project Title", "${data.extractedData.projectTitle || 'Enterprise Project'}"], ["Timeline", "..."], ["Budget", "..."], ["Team Size", "..."], ["Key Deliverables", "..."]], "caption": "Project Overview at a Glance"}
+After your opening paragraphs, OUTPUT THIS EXACT JSON ON ITS OWN LINE (fill in realistic values based on project context):
+{"type": "table", "tableType": "summary", "headers": ["Attribute", "Value"], "rows": [["Project Title", "${data.extractedData.projectTitle || 'Enterprise Project'}"], ["Timeline", "${data.extractedData.timeline || '6-8 months'}"], ["Budget", "${data.extractedData.budget || 'Investment range: $200K-$350K'}"], ["Team Size", "${data.extractedData.teamSize || '8-10 professionals'}"], ["Key Deliverables", "${(data.extractedData.deliverables || []).length > 0 ? (data.extractedData.deliverables || []).join(', ') : 'Enterprise software platform, integrations, documentation, training'}"]], "caption": "Project Overview at a Glance"}
 
 2. **Value Proposition Mindmap**:
-Create a Mermaid mindmap showing the interconnection of key benefits, value propositions, and expected outcomes.
-Format: {"type": "mermaid", "code": "mindmap\\n  root((${data.extractedData.projectTitle || 'Project'}))\\n    Business Benefits\\n      Cost Reduction\\n      Efficiency Gains\\n      Revenue Growth\\n    Technical Benefits\\n      Scalability\\n      Security\\n      Performance\\n    Strategic Outcomes\\n      Market Position\\n      Competitive Advantage\\n      Innovation", "caption": "Value Proposition Map"}
+After the table, OUTPUT THIS EXACT JSON ON ITS OWN LINE:
+{"type": "mermaid", "code": "mindmap\\n  root((${data.extractedData.projectTitle || 'Project'}))\\n    Business Benefits\\n      Cost Reduction\\n      Efficiency Gains\\n      Revenue Growth\\n    Technical Benefits\\n      Scalability\\n      Security\\n      Performance\\n    Strategic Outcomes\\n      Market Position\\n      Competitive Advantage\\n      Innovation", "caption": "Value Proposition Map"}
 
-3. **Key Insights Callouts** (2-3):
-Add callout boxes highlighting:
-- Primary business benefit or ROI
-- Critical success factor or differentiator
-- Strategic advantage or competitive edge
+3. **ROI Projection Chart**:
+After the mindmap, OUTPUT THIS EXACT JSON ON ITS OWN LINE:
+{"type": "chart", "chartType": "line", "data": {"labels": ["Month 0", "Month 6", "Month 12", "Month 18", "Month 24"], "datasets": [{"label": "ROI %", "data": [0, 15, 45, 85, 150]}]}, "caption": "Projected ROI Timeline"}
 
-Format: > **💡 Key Insight:** [Your compelling insight here]
-        > **✅ Business Impact:** [Quantifiable benefit]
-        > **🎯 Success Factor:** [Critical element]
+4. **Key Insights Callouts** (2-3):
+After the chart, add callout boxes using markdown blockquotes:
+
+> **💡 Key Insight:** [Your compelling insight about the project's strategic value]
+>
+> **✅ Business Impact:** [Quantifiable benefit with specific metrics]
+>
+> **🎯 Success Factor:** [Critical element that ensures project success]
 
 === OUTPUT STRUCTURE ===
-Return in this exact order:
-1. Executive Summary paragraphs (markdown formatted)
-2. Project Summary Table (JSON)
-3. Value Proposition Mindmap (JSON)
-4. Callout boxes (markdown blockquotes)
+Return in this EXACT order:
+1. Executive Summary opening paragraphs (2-3 paragraphs, markdown formatted)
+2. THE PROJECT SUMMARY TABLE JSON (on its own line, exactly as shown above)
+3. More content paragraphs (1-2 paragraphs)
+4. THE VALUE PROPOSITION MINDMAP JSON (on its own line, exactly as shown above)
+5. More content paragraphs (1-2 paragraphs)
+6. THE ROI PROJECTION CHART JSON (on its own line, exactly as shown above)
+7. Closing paragraphs (1-2 paragraphs)
+8. Callout boxes (markdown blockquotes as shown above)
+
+**IMPORTANT: The JSON blocks MUST be on their own lines, starting with {"type":**
 
 TONE: Executive-level, confident, consultative, data-driven, client-centric.
 Focus on business value, strategic outcomes, and measurable ROI.`;
@@ -626,26 +653,47 @@ Focus on business value, strategic outcomes, and measurable ROI.`;
 export function getProjectOverviewPrompt(data: SectionPromptData): string {
   return `Generate a detailed Project Overview section.
 
+=== PROJECT CONTEXT ===
 Project: ${data.extractedData.projectTitle || 'this project'}
 Client: ${data.extractedData.clientCompany || 'the client'}
 Industry: ${data.extractedData.industry || 'N/A'}
+Project Type: ${data.extractedData.projectType || 'N/A'}
+Objectives: ${data.extractedData.objectives || 'N/A'}
+Scope: ${data.extractedData.scope || 'N/A'}
+Requirements: ${JSON.stringify(data.extractedData.requirements || [])}
+Technologies: ${JSON.stringify(data.extractedData.technologies || [])}
 
-Details:
-- Project Type: ${data.extractedData.projectType || 'N/A'}
-- Objectives: ${data.extractedData.objectives || 'N/A'}
-- Scope: ${data.extractedData.scope || 'N/A'}
-- Requirements: ${JSON.stringify(data.extractedData.requirements || [])}
-- Technologies: ${JSON.stringify(data.extractedData.technologies || [])}
+${data.ragContext ? `\n=== RELEVANT EXAMPLES ===\n${data.ragContext}\n` : ''}
 
-${data.ragContext ? `\nRelevant examples:\n${data.ragContext}\n` : ''}
+=== REQUIREMENTS ===
+**IMPORTANT: If any data shows "N/A", "TBD", or empty arrays, YOU MUST generate realistic, professional values based on the project context. NEVER output placeholders.**
 
-Write a comprehensive project overview that includes:
+Write a comprehensive project overview (600-800 words) that includes:
 1. Background and context
 2. Current situation and challenges
 3. Project goals and objectives
 4. Expected benefits and outcomes
 
-Use ${data.contentType === 'bullets' ? 'bullet points' : 'paragraphs'}.`;
+=== REQUIRED VISUAL ELEMENTS ===
+
+**CRITICAL: You MUST output the JSON visualization blocks below EXACTLY as shown, on separate lines in your response.**
+
+1. **Project Goals Table**:
+OUTPUT THIS EXACT JSON ON ITS OWN LINE:
+{"type": "table", "tableType": "comparison", "headers": ["Goal", "Current State", "Target State", "Success Metric"], "rows": [["Efficiency", "Manual processes", "Automated workflows", "80% automation"], ["Performance", "Slow response times", "Optimized system", "< 2s response"], ["User Experience", "Complex interface", "Intuitive design", "> 90% satisfaction"]], "caption": "Project Goals & Success Metrics"}
+
+2. **Technology Stack Diagram**:
+OUTPUT THIS EXACT JSON ON ITS OWN LINE:
+{"type": "mermaid", "code": "graph TD\\n    A[Frontend] --> B[API Gateway]\\n    B --> C[Backend Services]\\n    C --> D[Database]\\n    B --> E[External APIs]\\n    C --> F[Cache Layer]", "caption": "System Architecture Overview"}
+
+3. **Benefits Chart**:
+OUTPUT THIS EXACT JSON ON ITS OWN LINE:
+{"type": "chart", "chartType": "radar", "data": {"labels": ["Efficiency", "Cost Savings", "User Satisfaction", "Scalability", "Security"], "datasets": [{"label": "Current", "data": [3, 4, 5, 4, 6]}, {"label": "Target", "data": [8, 9, 9, 9, 9]}]}, "caption": "Expected Improvement Across Key Areas"}
+
+4. **Callout Box**:
+> **🔍 Key Insight:** [Highlight the primary business driver or strategic importance]
+
+Use ${data.contentType === 'bullets' ? 'bullet points where appropriate' : 'clear paragraphs'}.`;
 }
 
 export function getScopePrompt(data: SectionPromptData): string {
@@ -667,6 +715,8 @@ Dependencies: ${JSON.stringify(data.extractedData.dependencies || [])}
 ${data.ragContext ? `\n=== SCOPE EXAMPLES FROM SUCCESSFUL PROJECTS ===\n${data.ragContext}\n` : ''}
 
 === REQUIREMENTS ===
+**IMPORTANT: If scope data is missing or shows "N/A" or empty arrays, generate a comprehensive, realistic scope based on the project type and deliverables. Include specific deliverables, assumptions, and boundaries. NEVER output placeholders.**
+
 Write a detailed Scope of Work section (800-1000 words) with:
 
 1. **Overview** (1 paragraph):
@@ -714,11 +764,15 @@ TONE: Clear, unambiguous, professional. Eliminate all scope creep risks.`;
 export function getApproachPrompt(data: SectionPromptData): string {
   return `Generate a detailed Approach/Methodology section.
 
+=== PROJECT CONTEXT ===
 Project: ${data.extractedData.projectTitle || 'this project'}
 Type: ${data.extractedData.projectType || 'N/A'}
 Technologies: ${JSON.stringify(data.extractedData.technologies || [])}
 
-${data.ragContext ? `\nApproaches from successful projects:\n${data.ragContext}\n` : ''}
+${data.ragContext ? `\n=== SUCCESSFUL PROJECT APPROACHES ===\n${data.ragContext}\n` : ''}
+
+=== REQUIREMENTS ===
+**IMPORTANT: If technology stack or methodology is missing, recommend industry-standard approaches appropriate for the project type. Include specific frameworks, tools, and methodologies. NEVER output placeholders.**
 
 Describe a professional, proven approach that includes:
 1. Overall methodology/framework
@@ -747,6 +801,8 @@ Methodology: ${data.extractedData.developmentMethodology || 'N/A'}
 ${data.ragContext ? `\n=== TIMELINE EXAMPLES FROM SUCCESSFUL PROJECTS ===\n${data.ragContext}\n` : ''}
 
 === REQUIREMENTS ===
+**IMPORTANT: If any timeline data shows "N/A" or "TBD", generate a realistic project timeline based on the project scope and industry standards. Include specific dates, phase durations, and milestones. NEVER output placeholders.**
+
 Write a detailed Timeline section (800-1000 words) that includes:
 
 1. **Overview** (1 paragraph):
@@ -772,17 +828,24 @@ Write a detailed Timeline section (800-1000 words) that includes:
 
 === REQUIRED VISUAL ELEMENTS ===
 
+**CRITICAL: You MUST output the JSON visualization blocks below EXACTLY as shown, on separate lines in your response.**
+
 1. **Timeline Table**:
-Generate a comprehensive timeline table with phases, dates, and deliverables.
-Format: {"type": "table", "tableType": "timeline", "headers": ["Milestone", "Date", "Description"], "rows": [["Project Kickoff", "${data.extractedData.startDate || 'TBD'}", "..."], ["Phase 1 Complete", "...", "..."], ["Final Delivery", "${data.extractedData.endDate || 'TBD'}", "..."]], "caption": "Project Timeline & Milestones"}
+OUTPUT THIS EXACT JSON ON ITS OWN LINE (fill in realistic dates based on project context - use actual calendar dates):
+{"type": "table", "tableType": "timeline", "headers": ["Phase", "Start Date", "End Date", "Duration", "Key Deliverables"], "rows": [["Phase 1: Discovery", "${data.extractedData.startDate || 'Week 1'}", "Week 2-3", "2-3 weeks", "Requirements, Analysis"], ["Phase 2: Design", "Week 3", "Week 6-7", "3-4 weeks", "Architecture, UI/UX"], ["Phase 3: Development", "Week 7", "Week 17-18", "8-10 weeks", "Core Features"], ["Phase 4: Testing", "Week 18", "Week 20-21", "2-3 weeks", "QA, UAT"], ["Phase 5: Deployment", "Week 21", "${data.extractedData.endDate || 'Week 23-24'}", "1-2 weeks", "Go-Live"]], "caption": "Project Timeline & Milestones"}
 
 2. **Gantt Chart**:
-Create a Mermaid Gantt chart showing project phases and timeline.
-Format: {"type": "mermaid", "code": "gantt\\n    title Project Timeline\\n    dateFormat YYYY-MM-DD\\n    section Phases\\n    Phase 1: phase1, ${data.extractedData.startDate || '2024-01-01'}, 30d\\n    Phase 2: phase2, after phase1, 45d\\n    Phase 3: phase3, after phase2, 30d\\n    section Milestones\\n    Kickoff: milestone, ${data.extractedData.startDate || '2024-01-01'}, 0d\\n    Go-Live: milestone, ${data.extractedData.endDate || '2024-06-01'}, 0d", "caption": "Project Gantt Chart"}
+OUTPUT THIS EXACT JSON ON ITS OWN LINE:
+{"type": "mermaid", "code": "gantt\\n    title ${data.extractedData.projectTitle || 'Project'} Timeline\\n    dateFormat YYYY-MM-DD\\n    section Discovery\\n    Requirements Analysis: a1, ${data.extractedData.startDate || '2024-01-01'}, 14d\\n    section Design\\n    Architecture Design: a2, after a1, 21d\\n    section Development\\n    Core Development: a3, after a2, 56d\\n    section Testing\\n    QA and UAT: a4, after a3, 14d\\n    section Deployment\\n    Go-Live: milestone, after a4, 0d", "caption": "Project Gantt Chart"}
 
-3. **Callout Boxes** (2):
-Format: > **⏱️ Critical Milestone:** [Key delivery date or decision point]
-        > **📅 Timeline Note:** [Important timing consideration]
+3. **Phase Distribution Chart**:
+OUTPUT THIS EXACT JSON ON ITS OWN LINE:
+{"type": "chart", "chartType": "doughnut", "data": {"labels": ["Discovery", "Design", "Development", "Testing", "Deployment"], "datasets": [{"label": "Time Allocation %", "data": [10, 15, 50, 15, 10]}]}, "caption": "Project Phase Time Distribution"}
+
+4. **Callout Boxes** (2):
+> **⏱️ Critical Milestone:** [Key delivery date or decision point that affects timeline]
+>
+> **📅 Timeline Note:** [Important timing consideration or dependency]
 
 TONE: Realistic, confident, transparent about dependencies and risks.`;
 }
@@ -799,6 +862,8 @@ Client Responsibilities: ${JSON.stringify(data.extractedData.clientResponsibilit
 ${data.ragContext ? `\n=== TEAM EXAMPLES FROM SUCCESSFUL PROJECTS ===\n${data.ragContext}\n` : ''}
 
 === REQUIREMENTS ===
+**IMPORTANT: If team data is missing or shows "TBD" or empty arrays, generate a realistic team structure based on project scope and complexity. Include specific roles, seniority levels, and allocations. NEVER output placeholders.**
+
 Write a detailed Team section (800-1000 words) covering:
 
 1. **Team Overview** (1 paragraph):
@@ -847,42 +912,88 @@ TONE: Confident, credible, emphasizing experience and proven track record.`;
 }
 
 export function getPricingPrompt(data: SectionPromptData): string {
-  return `Generate a Pricing/Investment section.
+  return `Generate a comprehensive Pricing/Investment section.
 
+=== PRICING INFORMATION ===
 Budget: ${data.extractedData.budget || 'N/A'}
 Budget Range: ${JSON.stringify(data.extractedData.budgetRange || {})}
 Payment Terms: ${data.extractedData.paymentTerms || 'N/A'}
 Payment Schedule: ${JSON.stringify(data.extractedData.paymentSchedule || [])}
 
-${data.ragContext ? `\nPricing structure examples:\n${data.ragContext}\n` : ''}
+${data.ragContext ? `\n=== PRICING EXAMPLES FROM SIMILAR PROJECTS ===\n${data.ragContext}\n` : ''}
 
-Create a clear pricing section that:
-1. Presents the investment in a professional manner
-2. Shows payment schedule/terms
-3. Clarifies what's included
-4. Notes any assumptions or conditions
+=== REQUIREMENTS ===
+**IMPORTANT: If budget data shows "N/A" or "TBD", generate a realistic budget breakdown based on the project scope, team size, and timeline. Use industry-standard pricing. Include specific dollar amounts with professional justification. NEVER output placeholders.**
 
-${data.contentType === 'table' ? 'Use a table format for clarity.' : 'Use clear paragraphs with breakdowns.'}
+Write a detailed pricing section (600-800 words) that:
+1. Presents the investment in a professional, value-focused manner
+2. Shows detailed cost breakdown by category/phase
+3. Presents payment schedule and terms clearly
+4. Clarifies what's included and what's excluded
+5. Notes any assumptions or conditions
+6. Emphasizes ROI and value proposition
 
-IMPORTANT: Generate visualizations to illustrate pricing:
-1. A Chart.js bar or pie chart showing cost breakdown by category/phase
-2. A Chart.js doughnut or pie chart showing payment schedule distribution
-Return charts as: {"type": "chart", "chartType": "bar", "data": {"labels": ["Phase 1", "Phase 2"], "datasets": [{"label": "Cost", "data": [5000, 3000]}]}}`;
+=== REQUIRED VISUAL ELEMENTS ===
+
+**CRITICAL: You MUST output the JSON visualization blocks below EXACTLY as shown, on separate lines in your response.**
+
+1. **Budget Breakdown Table**:
+OUTPUT THIS EXACT JSON ON ITS OWN LINE (use actual budget figures):
+{"type": "table", "tableType": "budget", "headers": ["Category", "Description", "Cost", "% of Total"], "rows": [["Discovery & Planning", "Requirements analysis, project planning", "$25,000", "10%"], ["Design & Architecture", "UI/UX design, system architecture", "$40,000", "16%"], ["Development", "Core development, features", "$125,000", "50%"], ["Testing & QA", "Quality assurance, UAT", "$30,000", "12%"], ["Deployment & Training", "Go-live, user training", "$20,000", "8%"], ["Project Management", "PM overhead, meetings", "$10,000", "4%"]], "caption": "Detailed Budget Breakdown"}
+
+2. **Cost Allocation Chart**:
+OUTPUT THIS EXACT JSON ON ITS OWN LINE:
+{"type": "chart", "chartType": "pie", "data": {"labels": ["Development", "Design", "Discovery", "Testing", "Deployment", "PM"], "datasets": [{"label": "Cost Distribution", "data": [50, 16, 10, 12, 8, 4]}]}, "caption": "Budget Allocation by Phase"}
+
+3. **Payment Schedule Table**:
+OUTPUT THIS EXACT JSON ON ITS OWN LINE:
+{"type": "table", "tableType": "payment", "headers": ["Milestone", "Payment %", "Amount", "Due Date"], "rows": [["Contract Signing", "25%", "$62,500", "Upon signing"], ["Design Approval", "25%", "$62,500", "End of Phase 2"], ["Development Complete", "30%", "$75,000", "End of Phase 3"], ["Go-Live", "20%", "$50,000", "Project completion"]], "caption": "Payment Schedule"}
+
+4. **ROI Projection Chart**:
+OUTPUT THIS EXACT JSON ON ITS OWN LINE:
+{"type": "chart", "chartType": "bar", "data": {"labels": ["Year 1", "Year 2", "Year 3"], "datasets": [{"label": "Investment", "data": [250, 50, 50]}, {"label": "Savings", "data": [100, 200, 300]}]}, "caption": "Investment vs. Expected Savings"}
+
+5. **Callout Box**:
+> **💰 Investment Insight:** [Highlight the ROI or value proposition]
+
+TONE: Value-focused, transparent, emphasizing ROI and long-term benefits.`;
 }
 
 export function getGenericSectionPrompt(data: SectionPromptData): string {
   return `Generate content for the "${data.sectionTitle}" section.
 
-Project Context:
-- Client: ${data.extractedData.clientCompany || 'the client'}
-- Project: ${data.extractedData.projectTitle || 'this project'}
-- Industry: ${data.extractedData.industry || 'N/A'}
+=== PROJECT CONTEXT ===
+Client: ${data.extractedData.clientCompany || 'the client'}
+Project: ${data.extractedData.projectTitle || 'this project'}
+Industry: ${data.extractedData.industry || 'N/A'}
 
-${data.ragContext ? `\nRelevant examples:\n${data.ragContext}\n` : ''}
+${data.ragContext ? `\n=== RELEVANT EXAMPLES ===\n${data.ragContext}\n` : ''}
 
-${data.templateInstructions || `Write professional content appropriate for a "${data.sectionTitle}" section in a business proposal.`}
+=== REQUIREMENTS ===
+**IMPORTANT: If any data is missing or shows "N/A"/"TBD", generate realistic, professional values appropriate for this section. Use your expertise to fill in industry-standard details. NEVER output placeholders.**
 
-Use ${data.contentType === 'bullets' ? 'bullet points' : data.contentType === 'table' ? 'table format' : 'paragraphs'}.`;
+${data.templateInstructions || `Write professional, comprehensive content (600-800 words) appropriate for a "${data.sectionTitle}" section in a business proposal.`}
+
+=== REQUIRED VISUAL ELEMENTS ===
+
+**CRITICAL: You MUST output at least 2-3 JSON visualization blocks EXACTLY as shown below, on separate lines in your response.**
+
+1. **Summary Table**:
+OUTPUT THIS EXACT JSON ON ITS OWN LINE (customize for your section):
+{"type": "table", "tableType": "summary", "headers": ["Item", "Description", "Details"], "rows": [["Item 1", "Description 1", "Details 1"], ["Item 2", "Description 2", "Details 2"], ["Item 3", "Description 3", "Details 3"]], "caption": "${data.sectionTitle} Summary"}
+
+2. **Process Diagram** (if applicable):
+OUTPUT THIS EXACT JSON ON ITS OWN LINE:
+{"type": "mermaid", "code": "graph LR\\n    A[Step 1] --> B[Step 2]\\n    B --> C[Step 3]\\n    C --> D[Result]", "caption": "${data.sectionTitle} Process Flow"}
+
+3. **Comparison Chart** (if applicable):
+OUTPUT THIS EXACT JSON ON ITS OWN LINE:
+{"type": "chart", "chartType": "bar", "data": {"labels": ["Category 1", "Category 2", "Category 3"], "datasets": [{"label": "Value", "data": [65, 45, 80]}]}, "caption": "${data.sectionTitle} Analysis"}
+
+4. **Callout Box**:
+> **💡 Key Insight:** [Highlight the most important point of this section]
+
+Use ${data.contentType === 'bullets' ? 'bullet points where appropriate' : data.contentType === 'table' ? 'structured tables' : 'clear paragraphs'}.`;
 }
 
 export function getSectionPrompt(data: SectionPromptData): string {

@@ -758,44 +758,44 @@ export function ProposalPreview({ proposal, className = '', mode = 'view' }: Pro
           inList = false;
         }
         const headingText = trimmed.substring(5);
-        html += `<h4 class="text-lg font-semibold mt-4 mb-2" style="color: var(--secondary-color); font-family: var(--heading-font); text-align: left; margin-left: 0; padding-left: 0;">${headingText}</h4>`;
+        html += `<h4 class="text-lg font-semibold mt-4 mb-2" style="color: var(--secondary-color); font-family: var(--heading-font); text-align: left; margin-left: 0; padding-left: 0; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">${headingText}</h4>`;
       } else if (trimmed.startsWith('### ')) {
         if (inList) {
           html += '</ul>';
           inList = false;
         }
         const headingText = trimmed.substring(4);
-        html += `<h3 class="text-xl font-semibold mt-6 mb-3" style="color: var(--secondary-color); font-family: var(--heading-font); text-align: left; margin-left: 0; padding-left: 0;">${headingText}</h3>`;
+        html += `<h3 class="text-xl font-semibold mt-6 mb-3" style="color: var(--secondary-color); font-family: var(--heading-font); text-align: left; margin-left: 0; padding-left: 0; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">${headingText}</h3>`;
       } else if (trimmed.startsWith('## ')) {
         if (inList) {
           html += '</ul>';
           inList = false;
         }
         const headingText = trimmed.substring(3);
-        html += `<h2 class="text-2xl font-bold mt-8 mb-4 pb-2 border-b-2" style="color: var(--primary-color); font-family: var(--heading-font); border-color: var(--primary-color); text-align: left; margin-left: 0; padding-left: 0;">${headingText}</h2>`;
+        html += `<h2 class="text-2xl font-bold mt-8 mb-4 pb-2 border-b-2" style="color: var(--primary-color); font-family: var(--heading-font); border-color: var(--primary-color); text-align: left; margin-left: 0; padding-left: 0; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">${headingText}</h2>`;
       } else if (trimmed.startsWith('# ')) {
         if (inList) {
           html += '</ul>';
           inList = false;
         }
         const headingText = trimmed.substring(2);
-        html += `<h1 class="text-3xl font-bold mt-10 mb-6 pb-3 border-b-4" style="color: var(--primary-color); font-family: var(--heading-font); border-color: var(--primary-color); text-align: left; margin-left: 0; padding-left: 0;">${headingText}</h1>`;
+        html += `<h1 class="text-3xl font-bold mt-10 mb-6 pb-3 border-b-4" style="color: var(--primary-color); font-family: var(--heading-font); border-color: var(--primary-color); text-align: left; margin-left: 0; padding-left: 0; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">${headingText}</h1>`;
       }
       // Bullet point
       else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
         if (!inList) {
-          html += '<ul class="list-disc pl-6 space-y-2 my-4">';
+          html += '<ul class="list-disc pl-6 space-y-2 my-4" style="word-wrap: break-word; overflow-wrap: break-word;">';
           inList = true;
         }
-        html += `<li class="text-gray-700">${trimmed.substring(2)}</li>`;
+        html += `<li class="text-gray-700" style="word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;">${trimmed.substring(2)}</li>`;
       }
       // Numbered list
       else if (/^\d+\.\s/.test(trimmed)) {
         if (!inList) {
-          html += '<ol class="list-decimal pl-6 space-y-2 my-4">';
+          html += '<ol class="list-decimal pl-6 space-y-2 my-4" style="word-wrap: break-word; overflow-wrap: break-word;">';
           inList = true;
         }
-        html += `<li class="text-gray-700">${trimmed.replace(/^\d+\.\s/, '')}</li>`;
+        html += `<li class="text-gray-700" style="word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;">${trimmed.replace(/^\d+\.\s/, '')}</li>`;
       }
       // End list if we hit a non-list line
       else if (trimmed) {
@@ -803,7 +803,7 @@ export function ProposalPreview({ proposal, className = '', mode = 'view' }: Pro
           html += '</ul>';
           inList = false;
         }
-        html += `<p class="mb-4 leading-relaxed text-gray-700" style="text-align: justify; line-height: 1.8;">${trimmed}</p>`;
+        html += `<p class="mb-4 leading-relaxed text-gray-700" style="text-align: justify; line-height: 1.8; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; max-width: 100%;">${trimmed}</p>`;
       }
     });
 
@@ -857,20 +857,31 @@ export function ProposalPreview({ proposal, className = '', mode = 'view' }: Pro
     const hasVisualizations = allVisualizations.length > 0;
 
     return (
-      <div className="prose max-w-none">
+      <div className="prose max-w-none" style={{ maxWidth: '100%', overflow: 'hidden', wordWrap: 'break-word' }}>
         <h2
           className="text-3xl font-bold mb-6 pb-3 border-b-4"
           style={{
             color: 'var(--primary-color)',
             fontFamily: 'var(--heading-font)',
-            borderColor: 'var(--primary-color)'
+            borderColor: 'var(--primary-color)',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word'
           }}
         >
           {renderHeadingWithEmoji(section.title)}
         </h2>
         <div
           className="text-gray-700 leading-relaxed mb-8 text-base"
-          style={{ fontFamily: 'var(--font-family)', textAlign: 'justify', lineHeight: '1.8' }}
+          style={{
+            fontFamily: 'var(--font-family)',
+            textAlign: 'justify',
+            lineHeight: '1.8',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+            wordBreak: 'break-word',
+            maxWidth: '100%',
+            overflow: 'hidden'
+          }}
           dangerouslySetInnerHTML={{
             __html: formatContent(cleanedText),
           }}

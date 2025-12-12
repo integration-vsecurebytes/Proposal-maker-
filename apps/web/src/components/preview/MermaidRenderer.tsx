@@ -18,7 +18,7 @@ export function MermaidRenderer({ code, className = '' }: MermaidRendererProps) 
       securityLevel: 'loose',
       fontFamily: 'Inter, system-ui, sans-serif',
       themeVariables: {
-        fontSize: '16px',
+        fontSize: '18px',            // Bigger base font
         primaryTextColor: '#000000',    // Pure black for maximum contrast
         secondaryTextColor: '#000000',
         tertiaryTextColor: '#000000',
@@ -47,23 +47,24 @@ export function MermaidRenderer({ code, className = '' }: MermaidRendererProps) 
         activationBorderColor: '#6366f1',
       },
       flowchart: {
-        fontSize: 14,                // Smaller font for better fit
-        nodeSpacing: 30,             // Reduced space between nodes
-        rankSpacing: 40,             // Reduced space between ranks
-        padding: 12,                 // Reduced padding in boxes
+        fontSize: 16,                // Bigger font
+        nodeSpacing: 30,             // More spacing between nodes
+        rankSpacing: 40,             // More spacing between ranks
+        padding: 20,                 // More padding in boxes for bigger text
         useMaxWidth: true,
         htmlLabels: true,
         curve: 'basis',
+        wrappingWidth: 150,          // More wrapping width for bigger text
       },
       sequence: {
-        fontSize: 14,
-        messageMargin: 30,
+        fontSize: 16,
+        messageMargin: 25,
         boxMargin: 8,
         useMaxWidth: true,
       },
       gantt: {
-        fontSize: 12,
-        sectionFontSize: 14,
+        fontSize: 14,
+        sectionFontSize: 16,
         numberSectionStyles: 4,
         useMaxWidth: true,
         barHeight: 20,
@@ -142,20 +143,25 @@ export function MermaidRenderer({ code, className = '' }: MermaidRendererProps) 
           // Ensure text is clearly visible by applying additional styles
           const svgElement = containerRef.current.querySelector('svg');
           if (svgElement) {
-            // Constrain diagram size to fit container
+            // Constrain diagram size to fit container - smaller diagrams
             svgElement.style.maxWidth = '100%';
-            svgElement.style.maxHeight = '600px'; // Limit height
+            svgElement.style.maxHeight = '280px'; // Even smaller for compact view
             svgElement.style.height = 'auto';
             svgElement.style.width = 'auto';
+            svgElement.style.display = 'block';
+            svgElement.style.margin = '0 auto'; // Center the diagram
 
             // Get original dimensions
             const viewBox = svgElement.getAttribute('viewBox');
             if (viewBox) {
               const [, , width, height] = viewBox.split(' ').map(Number);
 
-              // If diagram is too large, scale it down
-              if (width > 1200 || height > 800) {
-                const scale = Math.min(1200 / width, 800 / height, 1);
+              // Scale down more to make diagrams smaller
+              const maxPreviewWidth = 500; // Smaller max width
+              const maxPreviewHeight = 280; // Smaller max height
+
+              if (width > maxPreviewWidth || height > maxPreviewHeight) {
+                const scale = Math.min(maxPreviewWidth / width, maxPreviewHeight / height, 0.7); // Scale down to 70%
                 const newWidth = width * scale;
                 const newHeight = height * scale;
 
@@ -165,19 +171,77 @@ export function MermaidRenderer({ code, className = '' }: MermaidRendererProps) 
             }
 
             // Force all text elements to be dark and visible - CRITICAL FIX
-            const textElements = svgElement.querySelectorAll('text, tspan, .nodeLabel, .edgeLabel, .label, foreignObject div');
+            const textElements = svgElement.querySelectorAll('text, tspan, .nodeLabel, .edgeLabel, .label, foreignObject div, foreignObject span, foreignObject p');
             textElements.forEach((textEl: any) => {
-              textEl.style.fill = '#111827 !important'; // Force dark text
-              textEl.style.color = '#111827 !important'; // For HTML elements in foreignObject
-              textEl.style.fontWeight = '600'; // Bolder for better visibility
-              textEl.setAttribute('fill', '#111827'); // Set attribute directly
+              textEl.style.fill = '#000000'; // Pure black
+              textEl.style.color = '#000000'; // For HTML elements in foreignObject
+              textEl.style.fontWeight = '600'; // Semi-bold for visibility
+              textEl.style.fontSize = '16px'; // Bigger font for readability
+              textEl.setAttribute('fill', '#000000'); // Set attribute directly
+              textEl.setAttribute('color', '#000000');
 
-              // Enable text wrapping for long text
+              // Fix text alignment for SVG text elements
+              if (textEl.tagName === 'text' || textEl.tagName === 'tspan') {
+                textEl.setAttribute('text-anchor', 'middle'); // Center align text
+                textEl.style.dominantBaseline = 'middle'; // Vertical center
+                textEl.style.textAnchor = 'middle';
+              }
+
+              // Enable text wrapping and center alignment for foreignObject content
               if (textEl.tagName === 'foreignObject') {
                 textEl.style.overflow = 'visible';
                 textEl.style.whiteSpace = 'normal';
                 textEl.style.wordWrap = 'break-word';
+                textEl.style.padding = '0px';
+                textEl.style.boxSizing = 'border-box';
+
+                // Center content vertically and horizontally
+                const foreignDiv = textEl.querySelector('div');
+                if (foreignDiv) {
+                  foreignDiv.style.display = 'flex';
+                  foreignDiv.style.alignItems = 'center';
+                  foreignDiv.style.justifyContent = 'center';
+                  foreignDiv.style.height = '100%';
+                  foreignDiv.style.width = '100%';
+                }
               }
+
+              // Center align HTML text elements
+              if (textEl.tagName === 'DIV' || textEl.tagName === 'SPAN' || textEl.tagName === 'P') {
+                textEl.style.textAlign = 'center';
+                textEl.style.width = '100%';
+                textEl.style.padding = '0px';
+                textEl.style.margin = '0px';
+                textEl.style.boxSizing = 'border-box';
+                textEl.style.lineHeight = '1.4';
+                textEl.style.wordBreak = 'break-word';
+                textEl.style.overflowWrap = 'break-word';
+                textEl.style.whiteSpace = 'normal';
+                textEl.style.writingMode = 'horizontal-tb';
+                textEl.style.verticalAlign = 'middle';
+              }
+            });
+
+            // Force ALL text tags specifically with proper alignment
+            const allTextTags = svgElement.querySelectorAll('text');
+            allTextTags.forEach((textEl: any) => {
+              textEl.style.fill = '#000000';
+              textEl.style.fontWeight = '600';
+              textEl.style.fontSize = '16px';
+              textEl.setAttribute('fill', '#000000');
+              textEl.setAttribute('text-anchor', 'middle');
+              textEl.style.textAnchor = 'middle';
+              textEl.style.dominantBaseline = 'central';
+            });
+
+            // Force ALL tspan tags specifically with proper alignment
+            const allTspans = svgElement.querySelectorAll('tspan');
+            allTspans.forEach((tspan: any) => {
+              tspan.style.fill = '#000000';
+              tspan.style.fontSize = '16px';
+              tspan.setAttribute('fill', '#000000');
+              tspan.setAttribute('text-anchor', 'middle');
+              tspan.style.textAnchor = 'middle';
             });
 
             // Force label backgrounds to be visible
@@ -187,17 +251,56 @@ export function MermaidRenderer({ code, className = '' }: MermaidRendererProps) 
               bg.style.stroke = '#d1d5db';
             });
 
-            // Make sure node text is visible and fits
-            const nodeTexts = svgElement.querySelectorAll('.nodeLabel text, .node text, g.label text');
-            nodeTexts.forEach((textEl: any) => {
-              textEl.style.fill = '#000000 !important';
-              textEl.setAttribute('fill', '#000000');
+            // Make sure node text is visible, centered, and fits
+            const nodeTexts = svgElement.querySelectorAll('.nodeLabel, .node, g.label, .edgeLabel');
+            nodeTexts.forEach((nodeEl: any) => {
+              // Find text elements within nodes
+              const textEls = nodeEl.querySelectorAll('text');
+              textEls.forEach((textEl: any) => {
+                textEl.style.fill = '#000000';
+                textEl.style.fontWeight = '600';
+                textEl.style.fontSize = '16px';
+                textEl.setAttribute('fill', '#000000');
+                textEl.setAttribute('text-anchor', 'middle');
+                textEl.style.textAnchor = 'middle';
+                textEl.style.dominantBaseline = 'central';
+              });
 
-              // Enable text wrapping for node labels
-              const foreignObj = textEl.closest('foreignObject');
-              if (foreignObj) {
+              // Handle foreignObject labels
+              const foreignObjs = nodeEl.querySelectorAll('foreignObject');
+              foreignObjs.forEach((foreignObj: any) => {
                 foreignObj.style.overflow = 'visible';
-              }
+                foreignObj.style.padding = '0px';
+                foreignObj.style.boxSizing = 'border-box';
+
+                // Style the outer div to center content
+                const outerDiv = foreignObj.querySelector('div');
+                if (outerDiv) {
+                  outerDiv.style.display = 'flex';
+                  outerDiv.style.alignItems = 'center';
+                  outerDiv.style.justifyContent = 'center';
+                  outerDiv.style.height = '100%';
+                  outerDiv.style.width = '100%';
+                  outerDiv.style.padding = '0px';
+                  outerDiv.style.margin = '0px';
+
+                  // Style all nested text elements
+                  const textDivs = outerDiv.querySelectorAll('div, span, p');
+                  textDivs.forEach((div: any) => {
+                    div.style.color = '#000000';
+                    div.style.fontWeight = '600';
+                    div.style.textAlign = 'center';
+                    div.style.padding = '0px';
+                    div.style.margin = '0px';
+                    div.style.boxSizing = 'border-box';
+                    div.style.lineHeight = '1.4';
+                    div.style.wordBreak = 'break-word';
+                    div.style.overflowWrap = 'break-word';
+                    div.style.whiteSpace = 'normal';
+                    div.style.writingMode = 'horizontal-tb';
+                  });
+                }
+              });
             });
           }
         }
@@ -235,13 +338,14 @@ export function MermaidRenderer({ code, className = '' }: MermaidRendererProps) 
       )}
       <div
         ref={containerRef}
-        className="flex items-center justify-center overflow-auto"
+        className="flex items-center justify-center overflow-hidden"
         style={{
-          minHeight: isRendering ? '200px' : 'auto',
-          maxHeight: '650px',
+          minHeight: isRendering ? '120px' : 'auto',
+          maxHeight: '300px',
           maxWidth: '100%',
           position: 'relative',
-          zIndex: 1
+          zIndex: 1,
+          padding: '0.5rem 0'
         }}
       ></div>
     </div>

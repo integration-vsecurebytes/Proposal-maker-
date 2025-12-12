@@ -437,6 +437,24 @@ export class ProposalGenerator {
         }
       );
 
+      // DEBUG: Log raw AI output to see what's being generated
+      console.log('\n[AI-DEBUG] ========== RAW AI OUTPUT START ==========');
+      console.log(`[AI-DEBUG] Section: ${data.sectionTitle}`);
+      console.log(`[AI-DEBUG] Content length: ${rawContent.length} chars`);
+      console.log('[AI-DEBUG] Raw content (first 1000 chars):');
+      console.log(rawContent.substring(0, 1000));
+      console.log('[AI-DEBUG] Raw content (last 500 chars):');
+      console.log(rawContent.substring(Math.max(0, rawContent.length - 500)));
+
+      // Check for JSON visualization blocks
+      const jsonMatches = rawContent.match(/\{"type":/g);
+      console.log(`[AI-DEBUG] Found ${jsonMatches ? jsonMatches.length : 0} JSON blocks starting with {"type":`);
+
+      // Check for callouts
+      const calloutMatches = rawContent.match(/^>\s*\*\*/gm);
+      console.log(`[AI-DEBUG] Found ${calloutMatches ? calloutMatches.length : 0} markdown callout blocks (> **)`);
+      console.log('[AI-DEBUG] ========== RAW AI OUTPUT END ==========\n');
+
       // Parse and extract visualizations
       const { cleanedContent, visualizations } = this.parseVisualizations(rawContent);
 
@@ -500,9 +518,10 @@ export class ProposalGenerator {
    */
   async regenerateSection(
     proposalId: string,
-    sectionId: string
+    sectionId: string,
+    options?: { includeImages?: boolean; includeCharts?: boolean; includeDiagrams?: boolean }
   ): Promise<{ success: boolean; content: string }> {
-    console.log(`Regenerating section ${sectionId} for proposal ${proposalId}...`);
+    console.log(`Regenerating section ${sectionId} for proposal ${proposalId} with options:`, options);
 
     const [proposal] = await db
       .select()
@@ -537,13 +556,25 @@ export class ProposalGenerator {
 
     const ragContext = await this.getRAGContext(section.title, extractedData);
 
+    // Build instructions based on options
+    let generationInstructions = section.description || '';
+    if (options?.includeImages) {
+      generationInstructions += '\n\nIMPORTANT: Include relevant images and pictures in this section using markdown image syntax.';
+    }
+    if (options?.includeCharts) {
+      generationInstructions += '\n\nIMPORTANT: Include relevant charts and data visualizations in JSON format for this section.';
+    }
+    if (options?.includeDiagrams) {
+      generationInstructions += '\n\nIMPORTANT: Include relevant diagrams (flowcharts, process diagrams, etc.) using Mermaid syntax for this section.';
+    }
+
     const result = await this.generateSection({
       sectionTitle: section.title,
       sectionType: section.type || 'general',
       contentType: section.contentType || 'paragraphs',
       extractedData,
       ragContext,
-      templateInstructions: section.description,
+      templateInstructions: generationInstructions,
     });
 
     // Update the specific section in generatedContent

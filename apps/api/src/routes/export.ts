@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { docxGenerator } from '../services/documents/docx-generator';
+import { htmlGenerator } from '../services/documents/html-generator';
 import { db } from '../db';
 import { proposals } from '../db/schema';
 import { eq } from 'drizzle-orm';
@@ -46,6 +47,43 @@ router.get('/:proposalId/docx', async (req, res, next) => {
 
     // Send file (use .end() for binary data to avoid encoding issues)
     res.end(buffer, 'binary');
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/export/:proposalId/html
+ * Export proposal as HTML file
+ */
+router.get('/:proposalId/html', async (req, res, next) => {
+  try {
+    const { proposalId } = req.params;
+
+    // Get proposal for filename
+    const [proposal] = await db
+      .select()
+      .from(proposals)
+      .where(eq(proposals.id, proposalId));
+
+    if (!proposal) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+
+    // Generate HTML
+    const htmlContent = await htmlGenerator.generateHtml(proposalId);
+
+    // Create filename
+    const filename = `${proposal.projectTitle || 'Proposal'}_${proposal.clientCompany || 'Client'}.html`
+      .replace(/[^a-z0-9_\-\.]/gi, '_');
+
+    // Set headers
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', Buffer.byteLength(htmlContent, 'utf8'));
+
+    // Send file
+    res.send(htmlContent);
   } catch (error) {
     next(error);
   }
