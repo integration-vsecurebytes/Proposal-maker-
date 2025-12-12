@@ -1646,10 +1646,10 @@ export class DocxGenerator {
       console.log(`[DOCX] Caption: ${caption}`);
       console.log(`[DOCX] Branding Colors:`, branding);
 
-      // Chart dimensions matching preview (ChartRenderer uses height=400)
-      // Using wider aspect ratio for documents
-      const chartWidth = 600;
-      const chartHeight = 350;
+      // Chart dimensions - LARGER for document visibility
+      // Increased from 600x350 to 800x500 for better text readability
+      const chartWidth = 800;
+      const chartHeight = 500;
 
       // Generate high-quality chart image with branding
       // Using higher resolution (scale=2) for better quality in documents
@@ -1728,8 +1728,9 @@ export class DocxGenerator {
 
       // Max dimensions for DOCX - LARGER for better visibility
       // A4 page width ~595pt, using most of the usable width
-      const maxDocWidth = 550;
-      const maxDocHeight = 500;
+      // Increased for better text readability
+      const maxDocWidth = 650;
+      const maxDocHeight = 550;
 
       // Generate diagram image - SVG screenshot at natural size
       // Using large viewport to allow diagram to render fully

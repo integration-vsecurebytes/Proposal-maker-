@@ -182,78 +182,112 @@ export class ChartImageService {
             display: !!caption,
             text: caption || '',
             font: {
-              size: 18,
+              size: 36, // MUCH LARGER for document visibility
               weight: 'bold',
               family: colors.fontFamily,
             },
-            color: colors.primaryColor,
+            color: '#000000', // Pure black for visibility
             padding: {
-              bottom: 20,
+              bottom: 30,
             },
           },
           legend: {
             display: true,
             position: 'bottom',
             labels: {
-              color: colors.textColor,
+              color: '#000000', // Pure black for visibility
               font: {
                 family: colors.fontFamily,
-                size: 13,
+                size: 24, // MUCH LARGER for document visibility
+                weight: 'bold',
               },
-              padding: 15,
+              padding: 25,
               usePointStyle: true,
             },
           },
           tooltip: {
             enabled: true,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
             titleColor: '#ffffff',
             bodyColor: '#ffffff',
             titleFont: {
               family: colors.fontFamily,
-              size: 14,
+              size: 20,
               weight: 'bold',
             },
             bodyFont: {
               family: colors.fontFamily,
-              size: 12,
+              size: 18,
             },
-            padding: 12,
-            cornerRadius: 6,
+            padding: 16,
+            cornerRadius: 8,
+          },
+          // Data labels configuration - WHITE text on colored chart elements
+          datalabels: {
+            display: true,
+            color: '#ffffff', // WHITE for visibility on colored backgrounds
+            font: {
+              size: 22, // MUCH LARGER
+              weight: 'bold',
+            },
+            textStrokeColor: '#000000', // Black outline for contrast
+            textStrokeWidth: 2,
           },
         },
         scales: chartType !== 'pie' && chartType !== 'doughnut' ? {
           x: {
             ticks: {
-              color: colors.textColor,
+              color: '#000000', // Pure black for visibility
               font: {
                 family: colors.fontFamily,
-                size: 12,
+                size: 20, // MUCH LARGER for document visibility
+                weight: 'bold',
               },
             },
             grid: {
               color: colors.borderColor,
+              lineWidth: 1,
+            },
+            title: {
+              display: true,
+              color: '#000000',
+              font: {
+                family: colors.fontFamily,
+                size: 22, // MUCH LARGER
+                weight: 'bold',
+              },
             },
           },
           y: {
             ticks: {
-              color: colors.textColor,
+              color: '#000000', // Pure black for visibility
               font: {
                 family: colors.fontFamily,
-                size: 12,
+                size: 20, // MUCH LARGER for document visibility
+                weight: 'bold',
               },
             },
             grid: {
               color: colors.borderColor,
+              lineWidth: 1,
+            },
+            title: {
+              display: true,
+              color: '#000000',
+              font: {
+                family: colors.fontFamily,
+                size: 22, // MUCH LARGER
+                weight: 'bold',
+              },
             },
           },
         } : undefined,
         layout: {
           padding: {
-            top: 10,
-            bottom: 10,
-            left: 10,
-            right: 10,
+            top: 20,
+            bottom: 20,
+            left: 20,
+            right: 20,
           },
         },
       },

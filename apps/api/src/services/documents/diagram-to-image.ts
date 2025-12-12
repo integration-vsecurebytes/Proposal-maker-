@@ -152,13 +152,19 @@ export class DiagramImageService {
     .mermaid .edgePath path {
       stroke-width: 3px !important;
     }
-    /* Mindmap specific styles */
+    /* Mindmap specific styles - LARGER for document visibility */
     .mermaid .mindmap-node rect, .mermaid .mindmap-node circle {
-      stroke-width: 2px !important;
+      stroke-width: 3px !important;
     }
     .mermaid .mindmap-node text {
-      font-size: 20px !important;
+      font-size: 24px !important;
+      font-weight: 700 !important;
+    }
+    /* Ensure all text in mindmaps is visible */
+    .mermaid .mindmap-node foreignObject div {
+      font-size: 22px !important;
       font-weight: 600 !important;
+      color: #000000 !important;
     }
   </style>
 </head>
