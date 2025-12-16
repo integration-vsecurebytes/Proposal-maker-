@@ -182,56 +182,54 @@ export class ChartImageService {
             display: !!caption,
             text: caption || '',
             font: {
-              size: 36, // MUCH LARGER for document visibility
+              size: 28, // LARGER for document visibility
               weight: 'bold',
               family: colors.fontFamily,
             },
-            color: '#000000', // Pure black for visibility
+            color: colors.primaryColor,
             padding: {
-              bottom: 30,
+              bottom: 25,
             },
           },
           legend: {
             display: true,
             position: 'bottom',
             labels: {
-              color: '#000000', // Pure black for visibility
+              color: colors.textColor,
               font: {
                 family: colors.fontFamily,
-                size: 24, // MUCH LARGER for document visibility
+                size: 18, // LARGER for document visibility
                 weight: 'bold',
               },
-              padding: 25,
+              padding: 20,
               usePointStyle: true,
             },
           },
           tooltip: {
             enabled: true,
-            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
             titleColor: '#ffffff',
             bodyColor: '#ffffff',
             titleFont: {
               family: colors.fontFamily,
-              size: 20,
+              size: 18,
               weight: 'bold',
             },
             bodyFont: {
               family: colors.fontFamily,
-              size: 18,
+              size: 16,
             },
-            padding: 16,
-            cornerRadius: 8,
+            padding: 14,
+            cornerRadius: 6,
           },
-          // Data labels configuration - WHITE text on colored chart elements
+          // Add data labels plugin configuration for showing values on chart
           datalabels: {
             display: true,
-            color: '#ffffff', // WHITE for visibility on colored backgrounds
+            color: '#000000',
             font: {
-              size: 22, // MUCH LARGER
+              size: 16,
               weight: 'bold',
             },
-            textStrokeColor: '#000000', // Black outline for contrast
-            textStrokeWidth: 2,
           },
         },
         scales: chartType !== 'pie' && chartType !== 'doughnut' ? {
@@ -240,20 +238,19 @@ export class ChartImageService {
               color: '#000000', // Pure black for visibility
               font: {
                 family: colors.fontFamily,
-                size: 20, // MUCH LARGER for document visibility
+                size: 16, // LARGER for document visibility
                 weight: 'bold',
               },
             },
             grid: {
               color: colors.borderColor,
-              lineWidth: 1,
             },
             title: {
               display: true,
               color: '#000000',
               font: {
                 family: colors.fontFamily,
-                size: 22, // MUCH LARGER
+                size: 18,
                 weight: 'bold',
               },
             },
@@ -263,20 +260,19 @@ export class ChartImageService {
               color: '#000000', // Pure black for visibility
               font: {
                 family: colors.fontFamily,
-                size: 20, // MUCH LARGER for document visibility
+                size: 16, // LARGER for document visibility
                 weight: 'bold',
               },
             },
             grid: {
               color: colors.borderColor,
-              lineWidth: 1,
             },
             title: {
               display: true,
               color: '#000000',
               font: {
                 family: colors.fontFamily,
-                size: 22, // MUCH LARGER
+                size: 18,
                 weight: 'bold',
               },
             },

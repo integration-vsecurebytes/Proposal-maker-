@@ -1728,9 +1728,8 @@ export class DocxGenerator {
 
       // Max dimensions for DOCX - LARGER for better visibility
       // A4 page width ~595pt, using most of the usable width
-      // Increased for better text readability
-      const maxDocWidth = 650;
-      const maxDocHeight = 550;
+      const maxDocWidth = 550;
+      const maxDocHeight = 500;
 
       // Generate diagram image - SVG screenshot at natural size
       // Using large viewport to allow diagram to render fully

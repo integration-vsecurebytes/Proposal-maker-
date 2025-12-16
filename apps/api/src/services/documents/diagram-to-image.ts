@@ -36,6 +36,72 @@ export class DiagramImageService {
   private browser: Browser | null = null;
 
   /**
+   * Sanitize Mermaid code and fix common syntax errors
+   */
+  private sanitizeMermaidCode(rawCode: string): string {
+    let code = rawCode.trim();
+
+    // Remove markdown code blocks if present
+    code = code.replace(/^```(?:mermaid)?\n?/, '');
+    code = code.replace(/\n?```$/, '');
+    code = code.trim();
+
+    // Fix Gantt chart date format issues
+    // Convert "Month Day, Year" to "YYYY-MM-DD"
+    if (code.includes('gantt')) {
+      const monthMap: Record<string, string> = {
+        'january': '01', 'february': '02', 'march': '03', 'april': '04',
+        'may': '05', 'june': '06', 'july': '07', 'august': '08',
+        'september': '09', 'october': '10', 'november': '11', 'december': '12'
+      };
+
+      // Match patterns like "January 15, 2026" or "January 15 2026"
+      code = code.replace(/(\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s*\d{4}\b)/gi, (match) => {
+        const parts = match.match(/(\w+)\s+(\d{1,2}),?\s*(\d{4})/i);
+        if (parts) {
+          const month = monthMap[parts[1].toLowerCase()];
+          const day = parts[2].padStart(2, '0');
+          const year = parts[3];
+          return `${year}-${month}-${day}`;
+        }
+        return match;
+      });
+
+      // Also handle "15 January 2026" format
+      code = code.replace(/(\b\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b)/gi, (match) => {
+        const parts = match.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/i);
+        if (parts) {
+          const month = monthMap[parts[2].toLowerCase()];
+          const day = parts[1].padStart(2, '0');
+          const year = parts[3];
+          return `${year}-${month}-${day}`;
+        }
+        return match;
+      });
+    }
+
+    // Fix mindmap syntax - remove problematic emojis that cause parsing issues
+    // IMPORTANT: Don't use brackets [] as they create square nodes in mermaid mindmaps
+    if (code.startsWith('mindmap')) {
+      // Replace problematic emojis with plain text (no brackets - they break mindmap syntax)
+      code = code.replace(/✅/g, 'DONE:');
+      code = code.replace(/❌/g, 'NOT:');
+      code = code.replace(/📋/g, 'NOTE:');
+      code = code.replace(/⚠️/g, 'WARN:');
+      code = code.replace(/🔴/g, '');
+      code = code.replace(/🟢/g, '');
+      code = code.replace(/⚡/g, '');
+      code = code.replace(/💡/g, '');
+      code = code.replace(/🎯/g, '');
+    }
+
+    // Ensure single newline between lines (fix multiple blank lines)
+    code = code.replace(/\n{3,}/g, '\n\n');
+
+    return code;
+  }
+
+  /**
    * Initialize the headless browser (reused for multiple renders)
    */
   private async initBrowser(): Promise<Browser> {
@@ -100,6 +166,10 @@ export class DiagramImageService {
       // Determine background color (white for documents, transparent for web)
       const bgColor = backgroundColor === 'transparent' ? 'transparent' : backgroundColor;
 
+      // Sanitize the mermaid code to fix common syntax issues
+      const sanitizedCode = this.sanitizeMermaidCode(mermaidCode);
+      console.log('[Diagram] Sanitized mermaid code (first 200 chars):', sanitizedCode.substring(0, 200));
+
       // Create HTML with Mermaid configuration matching preview's MermaidRenderer
       // CRITICAL: Use startOnLoad: false and explicitly call mermaid.run() to ensure
       // all diagram types (including mindmaps) render correctly
@@ -152,25 +222,19 @@ export class DiagramImageService {
     .mermaid .edgePath path {
       stroke-width: 3px !important;
     }
-    /* Mindmap specific styles - LARGER for document visibility */
+    /* Mindmap specific styles */
     .mermaid .mindmap-node rect, .mermaid .mindmap-node circle {
-      stroke-width: 3px !important;
+      stroke-width: 2px !important;
     }
     .mermaid .mindmap-node text {
-      font-size: 24px !important;
-      font-weight: 700 !important;
-    }
-    /* Ensure all text in mindmaps is visible */
-    .mermaid .mindmap-node foreignObject div {
-      font-size: 22px !important;
+      font-size: 20px !important;
       font-weight: 600 !important;
-      color: #000000 !important;
     }
   </style>
 </head>
 <body>
   <div class="mermaid" id="diagram">
-${mermaidCode}
+${sanitizedCode}
   </div>
   <script>
     // Initialize mermaid with startOnLoad: false
